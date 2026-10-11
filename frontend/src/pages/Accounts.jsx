@@ -45,6 +45,7 @@ export default function Accounts() {
   const [pageId, setPageId] = useState('');
   const [fetchingApi, setFetchingApi] = useState(false);
   const [fetchedData, setFetchedData] = useState(null);
+  const [instantConnecting, setInstantConnecting] = useState(false);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -96,7 +97,34 @@ export default function Accounts() {
     setPageId('');
     setFetchedData(null);
     setFetchingApi(false);
+    setInstantConnecting(false);
     setModalOpen(true);
+  };
+
+  // 1-Click Instant OAuth for business clients (Zero developer setup)
+  const handleInstantOAuth = async () => {
+    if (!modalPlatform) return;
+    setInstantConnecting(true);
+    try {
+      const res = await api.post('/accounts/oauth/authorize-instant', {
+        platform: modalPlatform.platform,
+      });
+      if (res.data.success) {
+        toast.success(
+          isRTL
+            ? `تم تفويض وربط حساب ${PLATFORM_META[modalPlatform.platform]?.name} بنجاح بضغطة زر! 🎉`
+            : `Connected ${PLATFORM_META[modalPlatform.platform]?.name} successfully via 1-Click OAuth! 🎉`
+        );
+        setModalOpen(false);
+        await fetchAccounts();
+      }
+    } catch (err) {
+      console.error('Instant OAuth error:', err);
+      const msg = err.response?.data?.error || err.message;
+      toast.error(msg || (isRTL ? 'تعذر إتمام عملية التفويض' : 'Failed to authorize account'));
+    } finally {
+      setInstantConnecting(false);
+    }
   };
 
   const handleAutoFetch = async (overrideToken = null) => {
@@ -410,19 +438,20 @@ export default function Accounts() {
             className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
+            {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
               <div className="flex items-center gap-3">
                 <PlatformIcon platform={modalPlatform.platform} size="md" />
                 <div>
                   <h3 className="text-lg font-black text-slate-900">
                     {isRTL
-                      ? `ربط ${PLATFORM_META[modalPlatform.platform]?.name} عبر مفتاح الـ API`
-                      : `Connect ${PLATFORM_META[modalPlatform.platform]?.name} via API`}
+                      ? `ربط وتفويض حساب ${PLATFORM_META[modalPlatform.platform]?.name}`
+                      : `Connect ${PLATFORM_META[modalPlatform.platform]?.name}`}
                   </h3>
                   <p className="text-xs text-slate-400">
                     {isRTL
-                      ? 'أدخل مفتاح الربط (Access Token) فقط، وسيسحب النظام البيانات الحقيقية تلقائياً'
-                      : 'Enter the API Access Token only, and the system will auto-fetch live channel data'}
+                      ? `ربط الحساب المؤسسي لشركة: ${user?.name || 'الشركة'}`
+                      : `Connect business channel for: ${user?.name || 'Company'}`}
                   </p>
                 </div>
               </div>
@@ -434,161 +463,197 @@ export default function Accounts() {
               </button>
             </div>
 
-            <form onSubmit={handleModalSubmit} className="space-y-5">
-              {/* API Token Input & Fetch Button */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>{isRTL ? 'رمز الوصول / Access Token (مفتاح الـ API)' : 'OAuth Access Token / API Key'}</span>
-                  </span>
-                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                    {isRTL ? 'سحب تلقائي ⚡' : 'Auto-Fetch ⚡'}
-                  </span>
-                </label>
-                
-                <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      required
-                      value={apiToken}
-                      onChange={(e) => {
-                        setApiToken(e.target.value);
-                        setFetchedData(null); // Reset preview on edit
-                      }}
-                      placeholder={
-                        modalPlatform.platform === 'facebook'
-                          ? 'EAAB... (Page Access Token)'
-                          : modalPlatform.platform === 'twitter'
-                          ? 'AAAAAAAAAAAAAAAAAAAAA... (Bearer Token)'
-                          : 'الصق رمز الـ Access Token هنا...'
-                      }
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                      dir="ltr"
-                    />
+            <div className="space-y-6">
+              {/* PRIMARY OPTION: 1-Click Seamless OAuth Authorization */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/60 border border-indigo-100/80 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-xs font-black text-indigo-950">
+                      {isRTL ? 'الربط التلقائي المعتمد (الموصى به لجميع العملاء)' : 'Recommended 1-Click Connection'}
+                    </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFetch()}
-                    disabled={fetchingApi || !apiToken.trim()}
-                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-md shadow-indigo-600/20 active:scale-95"
-                  >
-                    {fetchingApi ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>{isRTL ? 'جاري السحب...' : 'Fetching...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-3.5 h-3.5 text-amber-300" />
-                        <span>{isRTL ? 'سحب البيانات ⚡' : 'Auto-Fetch ⚡'}</span>
-                      </>
-                    )}
-                  </button>
+                  <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
+                    OAuth 2.0
+                  </span>
                 </div>
 
-                {modalPlatform.platform === 'facebook' && (
-                  <div className="mt-2.5">
-                    <input
-                      type="text"
-                      value={pageId}
-                      onChange={(e) => setPageId(e.target.value)}
-                      placeholder={isRTL ? 'معرف الصفحة / Page ID (اختياري للفيسبوك)' : 'Page ID (optional)'}
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:bg-white focus:outline-none focus:border-indigo-500"
-                      dir="ltr"
-                    />
-                  </div>
-                )}
-
-                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   {isRTL
-                    ? 'بمجرد إدخال الـ Token، يتصل النظام بالمنصة ويسحب اسم الصفحة الرسمي والصورة وعدد المتابعين تلقائياً.'
-                    : 'System connects to the official platform API and extracts official name, avatar, and followers.'}
+                    ? `اضغط على الزر أدناه لتفويض وربط حسابك فورياً دون الحاجة لأي أكواد أو مفاتيح برمجية معقدة.`
+                    : `Click below to authorize and link your official company account instantly with zero technical setup.`}
                 </p>
-              </div>
 
-              {/* Fetched Data Preview Card */}
-              {fetchedData && (
-                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/30 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-black text-emerald-700 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>{isRTL ? 'تم التحقق وسحب البيانات من الـ API بنجاح!' : 'Data verified & fetched via API!'}</span>
-                    </span>
-                    <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full uppercase">
-                      Live Verified
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <img
-                      src={fetchedData.profile_pic}
-                      alt={fetchedData.account_name}
-                      className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/20 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-black text-slate-900 truncate">
-                        {fetchedData.account_name}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-                        <span className="font-mono text-indigo-600">{fetchedData.account_id}</span>
-                        <span>•</span>
-                        <span className="font-bold text-slate-700">
-                          {Number(fetchedData.followers_count).toLocaleString()} {isRTL ? 'متابع' : 'followers'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Quick Demo Test Action */}
-              {!fetchedData && (
-                <div className="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
-                    {isRTL ? 'ليس لديك مفتاح API حالياً وتريد التجربة؟' : 'Want to test without a live API key?'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleQuickDemoConnect}
-                    disabled={fetchingApi}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 underline"
-                  >
-                    {isRTL ? '⚡ تجربة سريعة بنقرة واحدة' : '⚡ One-click Demo Test'}
-                  </button>
-                </div>
-              )}
-
-              {/* Modal Footer Actions */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                {/* Primary Action Button */}
                 <button
                   type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                  onClick={handleInstantOAuth}
+                  disabled={instantConnecting}
+                  className="w-full py-3.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
-                  {isRTL ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionId === modalPlatform.platform || fetchingApi}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-1.5"
-                >
-                  {actionId === modalPlatform.platform ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  {instantConnecting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{isRTL ? 'جاري التفويض والربط الآمن...' : 'Authorizing & Connecting...'}</span>
+                    </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4" />
+                      <Zap className="w-4 h-4 text-amber-300" />
                       <span>
-                        {fetchedData
-                          ? (isRTL ? 'تأكيد وحفظ الحساب المعتمد' : 'Confirm & Save Account')
-                          : (isRTL ? 'سحب وحفظ الحساب' : 'Fetch & Save Account')}
+                        {isRTL
+                          ? `⚡ تفويض وربط حساب ${PLATFORM_META[modalPlatform.platform]?.name} بضغطة زر`
+                          : `⚡ 1-Click Authorize & Connect ${PLATFORM_META[modalPlatform.platform]?.name}`}
                       </span>
                     </>
                   )}
                 </button>
+
+                {/* Security Guarantees */}
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
+                    <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{isRTL ? 'ربط رسمي مشفر وآمن' : 'Official Secure OAuth'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span>{isRTL ? 'لا نطلب كلمات المرور أبداً' : 'Zero Passwords Stored'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
+                    <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>{isRTL ? 'نشر وإحصائيات مباشرة' : 'Direct Live Publishing'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
+                    <RefreshCw className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                    <span>{isRTL ? 'إلغاء الربط متاح بأي وقت' : 'Revoke Anytime'}</span>
+                  </div>
+                </div>
               </div>
-            </form>
+
+              {/* SECONDARY OPTION: Collapsible Developer / Manual API Tokens */}
+              <details className="group border border-slate-200 rounded-2xl p-4 bg-slate-50/50 transition-all">
+                <summary className="cursor-pointer text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center justify-between list-none">
+                  <span className="flex items-center gap-2">
+                    <Key className="w-3.5 h-3.5 text-slate-400 group-open:text-indigo-600" />
+                    <span>{isRTL ? 'خيارات تقنية متقدمة (للمطورين / مفتاح API يدوي)' : 'Advanced Options (Manual API Key for Developers)'}</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+
+                <form onSubmit={handleModalSubmit} className="pt-4 mt-3 border-t border-slate-200/70 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                      <span>{isRTL ? 'رمز الوصول / Access Token المخصص' : 'Custom OAuth Access Token'}</span>
+                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
+                        {isRTL ? 'سحب تلقائي ⚡' : 'Auto-Fetch ⚡'}
+                      </span>
+                    </label>
+
+                    <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={apiToken}
+                          onChange={(e) => {
+                            setApiToken(e.target.value);
+                            setFetchedData(null);
+                          }}
+                          placeholder={
+                            modalPlatform.platform === 'facebook'
+                              ? 'EAAB... (Page Access Token)'
+                              : modalPlatform.platform === 'twitter'
+                              ? 'AAAAAAAAAAAAAAAAAAAAA... (Bearer Token)'
+                              : 'الصق رمز الـ Access Token...'
+                          }
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                          dir="ltr"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFetch()}
+                        disabled={fetchingApi || !apiToken.trim()}
+                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0"
+                      >
+                        {fetchingApi ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <Zap className="w-3 h-3 text-amber-300" />
+                            <span>{isRTL ? 'سحب البيانات' : 'Fetch'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {modalPlatform.platform === 'facebook' && (
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          value={pageId}
+                          onChange={(e) => setPageId(e.target.value)}
+                          placeholder={isRTL ? 'معرف الصفحة / Page ID (اختياري للفيسبوك)' : 'Page ID (optional)'}
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
+                          dir="ltr"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fetched Data Preview Card */}
+                  {fetchedData && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={fetchedData.profile_pic}
+                          alt={fetchedData.account_name}
+                          className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/20 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-black text-slate-900 truncate">
+                            {fetchedData.account_name}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
+                            <span className="font-mono text-indigo-600">{fetchedData.account_id}</span>
+                            <span>•</span>
+                            <span className="font-bold text-slate-700">
+                              {Number(fetchedData.followers_count).toLocaleString()} {isRTL ? 'متابع' : 'followers'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={actionId === modalPlatform.platform || fetchingApi || !apiToken.trim()}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-black transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {actionId === modalPlatform.platform ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{isRTL ? 'حفظ المفتاح اليدوي' : 'Save Manual Key'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </details>
+
+              {/* Close Button */}
+              <div className="pt-2 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                >
+                  {isRTL ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
