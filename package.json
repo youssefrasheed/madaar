@@ -1,0 +1,10 @@
+{
+  "name": "madaar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Madaar - Unified Social Media Management & Analytics Platform",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && npm start"
+  }
+}
