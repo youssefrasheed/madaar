@@ -64,7 +64,16 @@ export function AuthProvider({ children }) {
       toast.success(`مرحباً بك مجدداً، ${res.data.user.name}!`);
       return { success: true };
     } catch (err) {
-      const message = err.response?.data?.message || 'بيانات الدخول غير صحيحة';
+      let message = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+      if (err.response) {
+        if (err.response.data && err.response.data.message) {
+          message = err.response.data.message;
+        } else if (err.response.status === 405 || err.response.status === 502 || err.response.status === 503 || err.response.status === 404) {
+          message = 'تعذر الاتصال بخادم الـ Backend (الخادم السحابي غير متصل حالياً)';
+        }
+      } else if (err.request) {
+        message = 'تعذر الاتصال بالخادم. يرجى التأكد من تشغيل السيرفر';
+      }
       toast.error(message);
       return { success: false, error: message };
     }
