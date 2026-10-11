@@ -12,7 +12,9 @@ import {
   RefreshCw,
   CheckCircle2,
   Globe,
-  Sparkles
+  Sparkles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -28,8 +30,10 @@ export default function Login() {
   // Form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // 2FA state
   const [otp, setOtp] = useState('');
@@ -276,16 +280,29 @@ export default function Login() {
                       {isRTL ? 'كلمة المرور' : 'Password'}
                     </label>
                     <div className="relative">
-                      <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
+                      <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
                       <input
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className={`w-full ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
+                        className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
                         dir="ltr"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1`}
+                        tabIndex={-1}
+                        aria-label={showPassword ? (isRTL ? 'إخفاء كلمة المرور' : 'Hide password') : (isRTL ? 'إظهار كلمة المرور' : 'Show password')}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5 text-indigo-600" />
+                        ) : (
+                          <Eye className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -349,16 +366,29 @@ export default function Login() {
                       {isRTL ? 'كلمة المرور' : 'Password'}
                     </label>
                     <div className="relative">
-                      <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
+                      <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
                       <input
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className={`w-full ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
+                        className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
                         dir="ltr"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1`}
+                        tabIndex={-1}
+                        aria-label={showPassword ? (isRTL ? 'إخفاء كلمة المرور' : 'Hide password') : (isRTL ? 'إظهار كلمة المرور' : 'Show password')}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5 text-indigo-600" />
+                        ) : (
+                          <Eye className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -367,16 +397,29 @@ export default function Login() {
                       {isRTL ? 'تأكيد كلمة المرور' : 'Confirm Password'}
                     </label>
                     <div className="relative">
-                      <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
+                      <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
                       <input
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className={`w-full ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
+                        className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
                         dir="ltr"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1`}
+                        tabIndex={-1}
+                        aria-label={showConfirmPassword ? (isRTL ? 'إخفاء تأكيد كلمة المرور' : 'Hide password confirmation') : (isRTL ? 'إظهار تأكيد كلمة المرور' : 'Show password confirmation')}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-5 h-5 text-indigo-600" />
+                        ) : (
+                          <Eye className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
