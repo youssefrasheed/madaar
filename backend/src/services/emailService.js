@@ -4,8 +4,47 @@
  */
 
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 let transporter = null;
+
+/**
+ * Send email via Resend API
+ */
+async function sendViaResend(toEmail, subject, html) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+
+  const from = process.env.RESEND_FROM_EMAIL || 'مَـدَار | Madaar Security <noreply@mzsteel.net>';
+  const replyTo = process.env.RESEND_REPLY_TO || 'no-reply@madaar.io';
+
+  try {
+    const res = await axios.post(
+      'https://api.resend.com/emails',
+      {
+        from,
+        to: [toEmail],
+        subject,
+        html,
+        reply_to: replyTo,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+
+    console.log(`[EmailService/Resend] Email sent to ${toEmail} successfully! ID: ${res.data.id}`);
+    return { success: true, messageId: res.data.id };
+  } catch (err) {
+    const errorDetails = err.response?.data || err.message;
+    console.error(`[EmailService/Resend] Failed to send email to ${toEmail}:`, errorDetails);
+    return { success: false, error: errorDetails };
+  }
+}
 
 // Initialize transporter based on environment variables
 function getTransporter() {
@@ -97,6 +136,14 @@ async function send2FACode(toEmail, code, userName = 'المستخدم') {
   console.log(`⏰ Valid for 10 minutes`);
   console.log('====================================================');
 
+  // Try sending via Resend first (No-Reply professional delivery)
+  if (process.env.RESEND_API_KEY) {
+    const resendResult = await sendViaResend(toEmail, subject, html);
+    if (resendResult && resendResult.success) {
+      return resendResult;
+    }
+  }
+
   if (mailClient) {
     try {
       const info = await mailClient.sendMail({
@@ -179,6 +226,14 @@ async function sendPasswordResetCode(toEmail, code, userName = 'المستخدم
   console.log(`👉 CODE: ${code}`);
   console.log(`⏰ Valid for 15 minutes`);
   console.log('====================================================');
+
+  // Try sending via Resend first (No-Reply professional delivery)
+  if (process.env.RESEND_API_KEY) {
+    const resendResult = await sendViaResend(toEmail, subject, html);
+    if (resendResult && resendResult.success) {
+      return resendResult;
+    }
+  }
 
   if (mailClient) {
     try {
