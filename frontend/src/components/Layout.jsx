@@ -302,6 +302,9 @@ export default function Layout() {
             {/* Client / Company Switcher (Multi-Tenant Workspace Selector) */}
             <ClientSwitcher />
 
+            {/* Install App CTA in Header */}
+            <InstallAppButton variant="header" />
+
             {/* Language Switcher Button */}
             <button
               onClick={toggleLang}

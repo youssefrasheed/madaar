@@ -5,69 +5,12 @@ const { authenticateToken } = require('../middleware/auth');
 
 router.use(authenticateToken);
 
-function ensureSampleNotifications(userId) {
-  try {
-    const count = db.prepare('SELECT count(*) as cnt FROM notifications WHERE user_id = ?').get(userId);
-    if (count.cnt === 0) {
-      const samples = [
-        {
-          platform: 'facebook',
-          type: 'comment',
-          title: 'تعليق جديد على صفحة فيسبوك',
-          message: 'علّق م. كريم عبد العزيز: "ما شاء الله، هل الخدمة متوفرة للشركات الناشئة؟"',
-          is_read: 0,
-        },
-        {
-          platform: 'instagram',
-          type: 'message',
-          title: 'رسالة خاصة جديدة في Instagram Direct',
-          message: 'أرسلت سارة المهندس استفساراً عن باقة إدارة الحسابات وعرض الأسعار.',
-          is_read: 0,
-        },
-        {
-          platform: 'linkedin',
-          type: 'comment',
-          title: 'تفاعل جديد على صفحة LinkedIn',
-          message: 'كتب Dr. Ahmed Mansour: "خطوة ممتازة جداً نحو التحول الرقمي السلس 👏"',
-          is_read: 0,
-        },
-        {
-          platform: 'twitter',
-          type: 'mention',
-          title: 'إشارة (Mention) جديدة على X / تويتر',
-          message: 'أشار إليك @khaled_tech في تغريدة بخصوص ميزات الجدولة التلقائية.',
-          is_read: 1,
-        },
-        {
-          platform: 'tiktok',
-          type: 'comment',
-          title: 'تعليق جديد على فيديو TikTok',
-          message: 'علّق @nour_media: "الفيديو مفيد جداً! متى الجزء الثاني؟ 🔥"',
-          is_read: 1,
-        },
-      ];
-
-      const stmt = db.prepare(`
-        INSERT INTO notifications (user_id, platform, type, title, message, is_read)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const s of samples) {
-        stmt.run(userId, s.platform, s.type, s.title, s.message, s.is_read);
-      }
-    }
-  } catch (e) {
-    console.error('Error seeding notifications:', e);
-  }
-}
-
 /**
  * GET /api/notifications
  * Get user notifications and unread count
  */
 router.get('/', (req, res) => {
   try {
-    ensureSampleNotifications(req.user.id);
 
     const notifications = db.prepare(`
       SELECT * FROM notifications

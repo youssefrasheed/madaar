@@ -19,6 +19,7 @@ import PlatformIcon, { PLATFORM_META } from '../components/PlatformIcon';
 import api from '../api/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import OAuthConsent from './OAuthConsent';
 
 const ALL_PLATFORMS = [
   { platform: 'facebook', defaultName: 'Facebook Business Page', limit: 63206, defaultFollowers: 0 },
@@ -62,6 +63,34 @@ export default function Accounts() {
 
   useEffect(() => {
     fetchAccounts();
+
+    // Listen for OAuth completion from popup window
+    const handleOAuthMessage = (event) => {
+      if (event.data?.type === 'MADAAR_OAUTH_SUCCESS') {
+        const platformName = PLATFORM_META[event.data.platform]?.name || event.data.platform;
+        toast.success(
+          isRTL
+            ? `تم تفويض وربط حساب ${platformName} بنجاح! 🎉`
+            : `Connected ${platformName} successfully! 🎉`
+        );
+        fetchAccounts();
+      }
+    };
+
+    // Listen for cross-window storage event as fallback
+    const handleStorageChange = (e) => {
+      if (e.key === 'madaar_oauth_success' && e.newValue) {
+        fetchAccounts();
+      }
+    };
+
+    window.addEventListener('message', handleOAuthMessage);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('message', handleOAuthMessage);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Support multiple accounts per platform while showing unconnected channels
@@ -72,7 +101,7 @@ export default function Accounts() {
     accountId: a.account_id,
     connected: true,
     followers: a.followers_count !== undefined ? a.followers_count : 0,
-    avatar: a.profile_pic || `https://api.dicebear.com/7.x/identicon/svg?seed=${a.platform}`,
+    avatar: a.profile_pic || null,
     limit: ALL_PLATFORMS.find((p) => p.platform === a.platform)?.limit || 280,
   }));
 
@@ -85,20 +114,65 @@ export default function Accounts() {
     accountId: `@${(user?.name || 'company').toLowerCase().replace(/\s+/g, '_')}`,
     connected: false,
     followers: 0,
-    avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${p.platform}`,
+    avatar: null,
     limit: p.limit,
   }));
 
   const accountsList = [...connectedItems, ...disconnectedPlatforms];
 
+  // Open authentic interactive OAuth Login & Consent Popup
+  const openOAuthPopup = (platformKey) => {
+    const width = 600;
+    const height = 750;
+    const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+    const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+
+    // If platform is facebook or twitter, route directly to real official OAuth endpoint!
+    const token = localStorage.getItem('token') || '';
+    const isRealOAuth = (platformKey === 'facebook' || platformKey === 'twitter');
+    const targetUrl = isRealOAuth
+      ? `https://api.jooart.uk/api/auth/${platformKey}?token=${token}`
+      : `/oauth/authorize?platform=${platformKey}`;
+
+    if (isRealOAuth) {
+      try {
+        const popup = window.open(
+          targetUrl,
+          `oauth_${platformKey}`,
+          `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=no,scrollbars=yes`
+        );
+        // If popup blocker intervened or mobile view, navigate directly to official OAuth!
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          window.location.href = targetUrl;
+        }
+      } catch (err) {
+        window.location.href = targetUrl;
+      }
+      return;
+    }
+
+    try {
+      const popup = window.open(
+        targetUrl,
+        `oauth_${platformKey}`,
+        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=no,scrollbars=yes`
+      );
+
+      // If popup blocker intervened or mobile view, open modal directly
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        const acct = accountsList.find((a) => a.platform === platformKey) || { platform: platformKey };
+        setModalPlatform(acct);
+        setModalOpen(true);
+      }
+    } catch (err) {
+      const acct = accountsList.find((a) => a.platform === platformKey) || { platform: platformKey };
+      setModalPlatform(acct);
+      setModalOpen(true);
+    }
+  };
+
   const openConnectModal = (account) => {
-    setModalPlatform(account);
-    setApiToken('');
-    setPageId('');
-    setFetchedData(null);
-    setFetchingApi(false);
-    setInstantConnecting(false);
-    setModalOpen(true);
+    openOAuthPopup(account.platform);
   };
 
   // 1-Click Instant OAuth for business clients (Zero developer setup)
@@ -253,25 +327,40 @@ export default function Accounts() {
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm self-start sm:self-auto">
-          {[
-            { id: 'all', label: t('allAccounts') },
-            { id: 'connected', label: t('connectedOnly') },
-            { id: 'disconnected', label: t('disconnectedOnly') },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                filter === tab.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Add & Authorize Channel Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const firstDisconnected = accountsList.find((a) => !a.connected);
+              openOAuthPopup(firstDisconnected ? firstDisconnected.platform : 'twitter');
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-black shadow-md shadow-indigo-600/20 transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isRTL ? 'إضافة وتفويض حساب جديد' : 'Add & Authorize Channel'}</span>
+          </button>
+
+          {/* Filters */}
+          <div className="flex items-center gap-2 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm self-start sm:self-auto">
+            {[
+              { id: 'all', label: t('allAccounts') },
+              { id: 'connected', label: t('connectedOnly') },
+              { id: 'disconnected', label: t('disconnectedOnly') },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                  filter === tab.id
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -325,7 +414,21 @@ export default function Accounts() {
               <div>
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
-                    <PlatformIcon platform={account.platform} size="md" />
+                    {account.connected && account.avatar ? (
+                      <div className="relative shrink-0">
+                        <img
+                          src={account.avatar}
+                          alt={account.name}
+                          referrerPolicy="no-referrer"
+                          className="w-12 h-12 rounded-2xl object-cover ring-2 ring-indigo-500/20 shadow-sm bg-slate-100"
+                        />
+                        <span className="absolute -bottom-1 -left-1">
+                          <PlatformIcon platform={account.platform} size="xs" showBg={true} />
+                        </span>
+                      </div>
+                    ) : (
+                      <PlatformIcon platform={account.platform} size="md" />
+                    )}
                     <div>
                       <h3 className="font-bold text-slate-900 text-base">
                         {PLATFORM_META[account.platform]?.name || account.platform}
@@ -431,229 +534,23 @@ export default function Accounts() {
         })}
       </div>
 
-      {/* CONNECT / EDIT ACCOUNT MODAL */}
+      {/* CONNECT / EDIT ACCOUNT MODAL (Interactive OAuth Dialog Fallback / Mobile View) */}
       {modalOpen && modalPlatform && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div
-            className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150"
-            dir={isRTL ? 'rtl' : 'ltr'}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-              <div className="flex items-center gap-3">
-                <PlatformIcon platform={modalPlatform.platform} size="md" />
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">
-                    {isRTL
-                      ? `ربط وتفويض حساب ${PLATFORM_META[modalPlatform.platform]?.name}`
-                      : `Connect ${PLATFORM_META[modalPlatform.platform]?.name}`}
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    {isRTL
-                      ? `ربط الحساب المؤسسي لشركة: ${user?.name || 'الشركة'}`
-                      : `Connect business channel for: ${user?.name || 'Company'}`}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* PRIMARY OPTION: 1-Click Seamless OAuth Authorization */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/60 border border-indigo-100/80 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-xs font-black text-indigo-950">
-                      {isRTL ? 'الربط التلقائي المعتمد (الموصى به لجميع العملاء)' : 'Recommended 1-Click Connection'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
-                    OAuth 2.0
-                  </span>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {isRTL
-                    ? `اضغط على الزر أدناه لتفويض وربط حسابك فورياً دون الحاجة لأي أكواد أو مفاتيح برمجية معقدة.`
-                    : `Click below to authorize and link your official company account instantly with zero technical setup.`}
-                </p>
-
-                {/* Primary Action Button */}
-                <button
-                  type="button"
-                  onClick={handleInstantOAuth}
-                  disabled={instantConnecting}
-                  className="w-full py-3.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {instantConnecting ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>{isRTL ? 'جاري التفويض والربط الآمن...' : 'Authorizing & Connecting...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4 text-amber-300" />
-                      <span>
-                        {isRTL
-                          ? `⚡ تفويض وربط حساب ${PLATFORM_META[modalPlatform.platform]?.name} بضغطة زر`
-                          : `⚡ 1-Click Authorize & Connect ${PLATFORM_META[modalPlatform.platform]?.name}`}
-                      </span>
-                    </>
-                  )}
-                </button>
-
-                {/* Security Guarantees */}
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
-                    <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{isRTL ? 'ربط رسمي مشفر وآمن' : 'Official Secure OAuth'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    <span>{isRTL ? 'لا نطلب كلمات المرور أبداً' : 'Zero Passwords Stored'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
-                    <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>{isRTL ? 'نشر وإحصائيات مباشرة' : 'Direct Live Publishing'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/80 border border-slate-100 text-[11px] text-slate-600 font-medium">
-                    <RefreshCw className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                    <span>{isRTL ? 'إلغاء الربط متاح بأي وقت' : 'Revoke Anytime'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECONDARY OPTION: Collapsible Developer / Manual API Tokens */}
-              <details className="group border border-slate-200 rounded-2xl p-4 bg-slate-50/50 transition-all">
-                <summary className="cursor-pointer text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center justify-between list-none">
-                  <span className="flex items-center gap-2">
-                    <Key className="w-3.5 h-3.5 text-slate-400 group-open:text-indigo-600" />
-                    <span>{isRTL ? 'خيارات تقنية متقدمة (للمطورين / مفتاح API يدوي)' : 'Advanced Options (Manual API Key for Developers)'}</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-normal group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-
-                <form onSubmit={handleModalSubmit} className="pt-4 mt-3 border-t border-slate-200/70 space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                      <span>{isRTL ? 'رمز الوصول / Access Token المخصص' : 'Custom OAuth Access Token'}</span>
-                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                        {isRTL ? 'سحب تلقائي ⚡' : 'Auto-Fetch ⚡'}
-                      </span>
-                    </label>
-
-                    <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={apiToken}
-                          onChange={(e) => {
-                            setApiToken(e.target.value);
-                            setFetchedData(null);
-                          }}
-                          placeholder={
-                            modalPlatform.platform === 'facebook'
-                              ? 'EAAB... (Page Access Token)'
-                              : modalPlatform.platform === 'twitter'
-                              ? 'AAAAAAAAAAAAAAAAAAAAA... (Bearer Token)'
-                              : 'الصق رمز الـ Access Token...'
-                          }
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                          dir="ltr"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAutoFetch()}
-                        disabled={fetchingApi || !apiToken.trim()}
-                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0"
-                      >
-                        {fetchingApi ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <>
-                            <Zap className="w-3 h-3 text-amber-300" />
-                            <span>{isRTL ? 'سحب البيانات' : 'Fetch'}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {modalPlatform.platform === 'facebook' && (
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          value={pageId}
-                          onChange={(e) => setPageId(e.target.value)}
-                          placeholder={isRTL ? 'معرف الصفحة / Page ID (اختياري للفيسبوك)' : 'Page ID (optional)'}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
-                          dir="ltr"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Fetched Data Preview Card */}
-                  {fetchedData && (
-                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 animate-in fade-in duration-150">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={fetchedData.profile_pic}
-                          alt={fetchedData.account_name}
-                          className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/20 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-black text-slate-900 truncate">
-                            {fetchedData.account_name}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                            <span className="font-mono text-indigo-600">{fetchedData.account_id}</span>
-                            <span>•</span>
-                            <span className="font-bold text-slate-700">
-                              {Number(fetchedData.followers_count).toLocaleString()} {isRTL ? 'متابع' : 'followers'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <button
-                      type="submit"
-                      disabled={actionId === modalPlatform.platform || fetchingApi || !apiToken.trim()}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-black transition-all flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      {actionId === modalPlatform.platform ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{isRTL ? 'حفظ المفتاح اليدوي' : 'Save Manual Key'}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </details>
-
-              {/* Close Button */}
-              <div className="pt-2 flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-                >
-                  {isRTL ? 'إغلاق' : 'Close'}
-                </button>
-              </div>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+          <div className="w-full max-w-lg my-auto relative">
+            <OAuthConsent
+              embeddedPlatform={modalPlatform.platform}
+              onEmbeddedSuccess={(savedAccount) => {
+                setModalOpen(false);
+                fetchAccounts();
+                toast.success(
+                  isRTL
+                    ? `تم تفويض وربط حساب ${PLATFORM_META[modalPlatform.platform]?.name || ''} بنجاح! 🎉`
+                    : `Connected ${PLATFORM_META[modalPlatform.platform]?.name || ''} successfully! 🎉`
+                );
+              }}
+              onEmbeddedCancel={() => setModalOpen(false)}
+            />
           </div>
         </div>
       )}

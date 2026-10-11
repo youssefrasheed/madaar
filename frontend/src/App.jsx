@@ -14,6 +14,7 @@ import AIFeatures from './pages/AIFeatures';
 import AIAssistant from './components/AIAssistant';
 import Profile from './pages/Profile';
 import Inbox from './pages/Inbox';
+import OAuthConsent from './pages/OAuthConsent';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -56,6 +57,14 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route
+            path="/oauth/authorize"
+            element={
+              <ProtectedRoute>
+                <OAuthConsent />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected routes wrapped in Layout */}
           <Route

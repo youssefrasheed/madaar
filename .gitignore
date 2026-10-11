@@ -33,10 +33,19 @@ frontend/.env.production
 *.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 backend/data/*.sqlite
 backend/data/*.sqlite-journal
 backend/data/*.sqlite-wal
 backend/data/*.sqlite-shm
+backend/src/db/*.db
+
+# Keys & deployment scripts with credentials
+.ssh/
+scripts/
 
 # Uploads
 backend/uploads/*

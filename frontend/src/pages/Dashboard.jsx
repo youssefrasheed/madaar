@@ -281,7 +281,21 @@ export default function Dashboard() {
                   className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-indigo-100 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <PlatformIcon platform={acc.platform} size="sm" />
+                    {acc.profile_pic ? (
+                      <div className="relative shrink-0">
+                        <img
+                          src={acc.profile_pic}
+                          alt={acc.account_name}
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-10 rounded-xl object-cover ring-1 ring-slate-200 shadow-sm bg-slate-100"
+                        />
+                        <span className="absolute -bottom-1 -left-1">
+                          <PlatformIcon platform={acc.platform} size="xs" showBg={true} />
+                        </span>
+                      </div>
+                    ) : (
+                      <PlatformIcon platform={acc.platform} size="sm" />
+                    )}
                     <div>
                       <p className="text-xs font-bold text-slate-800">{acc.account_name}</p>
                       <p className="text-[11px] text-slate-400 capitalize">{acc.platform}</p>

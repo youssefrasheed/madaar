@@ -90,14 +90,24 @@ router.post('/oauth/authorize-instant', async (req, res) => {
       handle = `@${company.toLowerCase().replace(/[^a-z0-9_]/g, '')}`;
     }
 
-    const profilePic = `https://api.dicebear.com/7.x/identicon/svg?seed=${p}_${user.id}`;
+    // Support user-provided custom name and handle if passed from OAuth popup
+    if (req.body.account_name && req.body.account_name.trim()) {
+      accountName = req.body.account_name.trim();
+    }
+    if (req.body.account_id && req.body.account_id.trim()) {
+      handle = req.body.account_id.trim();
+      if (!handle.startsWith('@') && p !== 'youtube') handle = `@${handle}`;
+    }
+
+    const initialFollowers = Number(req.body.followers_count) || 0;
+    const profilePic = req.body.profile_pic || null;
     const accessToken = `oauth_${p}_prod_${Date.now()}`;
     const refreshToken = `refresh_${p}_prod_${Date.now()}`;
     const tokenExpiresAt = new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString(); // 90 days
 
     // Upsert into social_accounts
     const existing = db.prepare(`
-      SELECT id FROM social_accounts WHERE user_id = ? AND platform = ?
+      SELECT id, followers_count FROM social_accounts WHERE user_id = ? AND platform = ?
     `).get(user.id, p);
 
     let accountId;
@@ -112,8 +122,8 @@ router.post('/oauth/authorize-instant', async (req, res) => {
       const ins = db.prepare(`
         INSERT INTO social_accounts (
           user_id, platform, account_name, account_id, access_token, refresh_token, token_expires_at, profile_pic, followers_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-      `).run(user.id, p, accountName, handle, accessToken, refreshToken, tokenExpiresAt, profilePic);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(user.id, p, accountName, handle, accessToken, refreshToken, tokenExpiresAt, profilePic, initialFollowers);
       accountId = ins.lastInsertRowid;
     }
 

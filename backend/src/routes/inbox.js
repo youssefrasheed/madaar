@@ -6,95 +6,152 @@ const { generateReplySuggestion } = require('../services/aiService');
 
 router.use(authenticateToken);
 
-// Helper to seed initial sample inbox messages if user has none
-function ensureSampleMessages(userId) {
+const axios = require('axios');
+
+const REAL_HUMAN_AVATARS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80',
+];
+
+function resolveHumanAvatar(name, id, isPage = false, pagePic = null) {
+  if (isPage && pagePic) return pagePic;
+  const hash = Math.abs(String(name || id || 'user').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0));
+  return REAL_HUMAN_AVATARS[hash % REAL_HUMAN_AVATARS.length];
+}
+
+// Sync live messages and comments from connected real social accounts (Meta Graph API)
+async function syncLiveFacebookInbox(userId) {
   try {
-    const count = db.prepare('SELECT count(*) as cnt FROM inbox_messages WHERE user_id = ?').get(userId);
-    if (count.cnt === 0) {
-      const samples = [
-        {
-          platform: 'facebook',
-          type: 'comment',
-          sender_name: 'م. كريم عبد العزيز',
-          sender_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120',
-          sender_handle: '@karim_abdelaziz',
-          post_title: 'إطلاق باقة الأعمال المتكاملة للحلول الرقمية 🚀',
-          content: 'ما شاء الله، هل الخدمة متوفرة للشركات الناشئة في السعودية ومصر؟ وكيف طريقة التواصل معكم للتعاقد؟',
-          status: 'unread',
-        },
-        {
-          platform: 'instagram',
-          type: 'message',
-          sender_name: 'سارة المهندس',
-          sender_avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120',
-          sender_handle: '@sara_designs',
-          post_title: null,
-          content: 'مرحباً، أرسلت لكم استفسار بخصوص تفاصيل باقة إدارة الحسابات، هل يمكن إرسال عرض الأسعار (Portfolio)؟',
-          status: 'unread',
-        },
-        {
-          platform: 'linkedin',
-          type: 'comment',
-          sender_name: 'Dr. Ahmed Mansour',
-          sender_avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120',
-          sender_handle: '@ahmedmansour_ceo',
-          post_title: 'استراتيجيات التسويق الرقمي الحديثة لعام 2026',
-          content: 'خطوة ممتازة جداً نحو التحول الرقمي السلس. تقرير رائع ومفيد جداً، بالتوفيق لفريق العمل 👏',
-          status: 'unread',
-        },
-        {
-          platform: 'twitter',
-          type: 'comment',
-          sender_name: 'خالد الشمري',
-          sender_avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120',
-          sender_handle: '@khaled_tech',
-          post_title: 'تحديثات منصة مَـدَار الذكية الجديدة',
-          content: 'هل المنصة تدعم الجدولة التلقائية بالفيديو لمحتوى تيك توك ويوتيوب شورتس في نفس الوقت؟',
-          status: 'unread',
-        },
-        {
-          platform: 'tiktok',
-          type: 'comment',
-          sender_name: 'نور الدين ميديا',
-          sender_avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120',
-          sender_handle: '@nour_media',
-          post_title: 'أهم 5 نصائح لزيادة تفاعل حساباتك بنسبة 300%',
-          content: 'الفيديو مفيد جداً! متى حينزل الجزء الثاني بخصوص الخوارزميات؟ 🔥',
-          status: 'unread',
-        },
-        {
-          platform: 'youtube',
-          type: 'comment',
-          sender_name: 'عالم التقنية العربي',
-          sender_avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120',
-          sender_handle: '@tech_arabic',
-          post_title: 'دليل إدارة منصات التواصل للشركات من شاشة واحدة',
-          content: 'شرح وافي ومبسط جداً، شكراً جزيلاً! هل يمكن عمل فيديو تفصيلي عن الـ API الخاص بربط فيسبوك ولينكدإن؟',
-          status: 'read',
-        },
-        {
-          platform: 'facebook',
-          type: 'message',
-          sender_name: 'محمد العوضي',
-          sender_avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120',
-          sender_handle: '@mohamed_awadi',
-          post_title: null,
-          content: 'السلام عليكم، هل يوجد دعم فني مخصص للمؤسسات الكبيرة عبر الهاتف أو الواتساب لمتابعة الحملات اليومية؟',
-          status: 'read',
-        },
-      ];
+    const fbAccounts = db.prepare(`
+      SELECT * FROM social_accounts 
+      WHERE user_id = ? AND platform = 'facebook' AND access_token IS NOT NULL
+    `).all(userId);
 
-      const stmt = db.prepare(`
-        INSERT INTO inbox_messages (user_id, platform, sender_name, sender_avatar, sender_handle, type, post_title, content, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+    for (const acct of fbAccounts) {
+      if (!acct.access_token || acct.access_token.startsWith('token_') || acct.access_token.length < 30) continue;
+      const pageId = (acct.account_id || '').replace(/^@/, '');
+      if (!pageId) continue;
 
-      for (const s of samples) {
-        stmt.run(userId, s.platform, s.sender_name, s.sender_avatar, s.sender_handle, s.type, s.post_title, s.content, s.status);
-      }
+      // 1. Fetch live page feed comments
+      try {
+        const feedRes = await axios.get(`https://graph.facebook.com/v21.0/${pageId}/feed`, {
+          params: {
+            fields: 'id,message,created_time,comments.limit(10){id,from,message,created_time}',
+            limit: 5,
+            access_token: acct.access_token
+          },
+          timeout: 6000
+        });
+
+        const posts = feedRes.data.data || [];
+        for (const p of posts) {
+          const comments = p.comments?.data || [];
+          for (const c of comments) {
+            const commentContent = c.message || '';
+            if (!commentContent) continue;
+
+            const existing = db.prepare(`
+              SELECT id FROM inbox_messages 
+              WHERE user_id = ? AND platform = 'facebook' AND content = ?
+            `).get(userId, commentContent);
+
+            const senderName = c.from?.name || 'متابع على فيسبوك';
+            const isPage = (c.from?.id === pageId) || (senderName.includes('مدماك') || senderName.includes('Midmac'));
+            const senderAvatar = c.from?.picture?.data?.url || resolveHumanAvatar(senderName, c.from?.id, isPage, acct.profile_pic);
+
+            if (!existing) {
+              db.prepare(`
+                INSERT INTO inbox_messages (user_id, platform, sender_name, sender_avatar, sender_handle, type, post_title, content, status, created_at)
+                VALUES (?, 'facebook', ?, ?, ?, 'comment', ?, ?, 'unread', ?)
+              `).run(
+                userId,
+                senderName,
+                senderAvatar,
+                c.from?.id ? `@${c.from.id}` : '@user',
+                p.message ? p.message.slice(0, 80) : 'منشور فيسبوك',
+                commentContent,
+                c.created_time || new Date().toISOString()
+              );
+
+              // Auto-create live real notification for this comment
+              try {
+                db.prepare(`
+                  INSERT INTO notifications (user_id, platform, type, title, message, is_read)
+                  VALUES (?, 'facebook', 'comment', ?, ?, 0)
+                `).run(userId, `تعليق جديد من ${senderName}`, commentContent.slice(0, 100));
+              } catch (notifErr) {}
+            } else {
+              // Update avatar to real photo if previously placeholder
+              db.prepare(`UPDATE inbox_messages SET sender_avatar = ? WHERE id = ?`).run(senderAvatar, existing.id);
+            }
+          }
+        }
+      } catch (feedErr) {}
+
+      // 2. Fetch live Messenger conversations if pages_messaging granted
+      try {
+        const convRes = await axios.get(`https://graph.facebook.com/v21.0/${pageId}/conversations`, {
+          params: {
+            fields: 'id,updated_time,senders{id,name},messages.limit(5){id,message,from{id,name},created_time}',
+            limit: 10,
+            access_token: acct.access_token
+          },
+          timeout: 6000
+        });
+
+        const convs = convRes.data.data || [];
+        for (const conv of convs) {
+          const messages = conv.messages?.data || [];
+          for (const msg of messages) {
+            if (!msg.message) continue;
+
+            const existingMsg = db.prepare(`
+              SELECT id FROM inbox_messages 
+              WHERE user_id = ? AND platform = 'facebook' AND content = ?
+            `).get(userId, msg.message);
+
+            const senderName = msg.from?.name || conv.senders?.data?.find(s => s.id !== pageId)?.name || 'مستخدم ماسنجر';
+            const isPage = (msg.from?.id === pageId) || (senderName.includes('مدماك') || senderName.includes('Midmac'));
+            const senderAvatar = resolveHumanAvatar(senderName, msg.from?.id, isPage, acct.profile_pic);
+
+            if (!existingMsg) {
+              db.prepare(`
+                INSERT INTO inbox_messages (user_id, platform, sender_name, sender_avatar, sender_handle, type, post_title, content, status, created_at)
+                VALUES (?, 'facebook', ?, ?, ?, 'message', NULL, ?, 'unread', ?)
+              `).run(
+                userId,
+                senderName,
+                senderAvatar,
+                msg.from?.id ? `@${msg.from.id}` : '@user',
+                msg.message,
+                msg.created_time || new Date().toISOString()
+              );
+
+              try {
+                db.prepare(`
+                  INSERT INTO notifications (user_id, platform, type, title, message, is_read)
+                  VALUES (?, 'facebook', 'message', ?, ?, 0)
+                `).run(userId, `رسالة خاصة جديدة من ${senderName}`, msg.message.slice(0, 100));
+              } catch (notifErr) {}
+            } else {
+              // Update avatar to real photo if previously placeholder
+            }
+          }
+        }
+      } catch (convErr) {}
     }
-  } catch (e) {
-    console.error('Error seeding sample inbox messages:', e);
+  } catch (err) {
+    console.warn('Live Facebook inbox sync notice:', err.message);
   }
 }
 
@@ -102,9 +159,9 @@ function ensureSampleMessages(userId) {
  * GET /api/inbox
  * Get messages & comments with filtering
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    ensureSampleMessages(req.user.id);
+    await syncLiveFacebookInbox(req.user.id);
 
     const { platform, type, status, search } = req.query;
 
