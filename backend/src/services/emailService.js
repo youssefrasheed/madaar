@@ -91,8 +91,10 @@ async function send2FACode(toEmail, code, userName = 'المستخدم') {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
     .container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 36px 24px 28px; text-align: center; color: #ffffff; }
+    .avatar-wrapper { display: inline-block; width: 68px; height: 68px; border-radius: 20px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.2); background: #0f172a; }
+    .avatar-img { width: 68px; height: 68px; object-fit: cover; display: block; border-radius: 18px; }
+    .logo { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
     .badge { display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid #818cf8; color: #c7d2fe; font-size: 12px; padding: 4px 12px; border-radius: 999px; }
     .body { padding: 32px 28px; text-align: center; }
     .title { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #0f172a; }
@@ -106,7 +108,10 @@ async function send2FACode(toEmail, code, userName = 'المستخدم') {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🪐 مَـدَار | Madaar</div>
+      <div class="avatar-wrapper">
+        <img class="avatar-img" src="https://madaar.jooart.uk/pwa-192.png" alt="مَـدَار" width="68" height="68" />
+      </div>
+      <div class="logo">مَـدَار | Madaar</div>
       <div class="badge">نظام حماية الحسابات والمصادقة الثنائية (2FA)</div>
     </div>
     <div class="body">
@@ -183,8 +188,10 @@ async function sendPasswordResetCode(toEmail, code, userName = 'المستخدم
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
     .container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
-    .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 36px 24px 28px; text-align: center; color: #ffffff; }
+    .avatar-wrapper { display: inline-block; width: 68px; height: 68px; border-radius: 20px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.2); background: #0f172a; }
+    .avatar-img { width: 68px; height: 68px; object-fit: cover; display: block; border-radius: 18px; }
+    .logo { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
     .badge { display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid #818cf8; color: #c7d2fe; font-size: 12px; padding: 4px 12px; border-radius: 999px; }
     .body { padding: 32px 28px; text-align: center; }
     .title { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #0f172a; }
@@ -198,7 +205,10 @@ async function sendPasswordResetCode(toEmail, code, userName = 'المستخدم
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🪐 مَـدَار | Madaar</div>
+      <div class="avatar-wrapper">
+        <img class="avatar-img" src="https://madaar.jooart.uk/pwa-192.png" alt="مَـدَار" width="68" height="68" />
+      </div>
+      <div class="logo">مَـدَار | Madaar</div>
       <div class="badge">استعادة كلمة المرور وتأمين الحساب</div>
     </div>
     <div class="body">
