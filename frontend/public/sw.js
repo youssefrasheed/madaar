@@ -1,7 +1,6 @@
-const CACHE_NAME = 'madaar-pwa-v1';
+const CACHE_NAME = 'madaar-pwa-v2';
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/favicon.svg',
   '/pwa-192.png',
@@ -32,36 +31,40 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-First for HTML/navigation and JS, Cache-Fallback
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache backend API calls
-  if (url.pathname.startsWith('/api/')) {
+  // Never intercept API requests
+  if (url.pathname.startsWith('/api') || url.hostname === 'api.jooart.uk') {
     return;
   }
 
+  // Network-First Strategy: Always fetch fresh code when online
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (
-            networkResponse &&
-            networkResponse.status === 200 &&
-            event.request.url.startsWith('http')
-          ) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          event.request.method === 'GET' &&
+          event.request.url.startsWith('http')
+        ) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Fallback to cache when offline
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
           if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
+            return caches.match('/');
           }
         });
-    })
+      })
   );
 });
