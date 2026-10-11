@@ -30,6 +30,30 @@ router.get('/', (req, res) => {
 });
 
 /**
+ * POST /api/accounts/fetch-info
+ * Auto-fetches account details (name, avatar, handle, real follower count) directly from the platform API using the Access Token.
+ */
+router.post('/fetch-info', async (req, res) => {
+  try {
+    const { platform, access_token, page_id } = req.body;
+    if (!platform || !access_token) {
+      return res.status(400).json({ error: 'المنصة ورمز الـ Access Token مطلوبان' });
+    }
+
+    const user = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
+    const info = await socialMediaService.fetchAccountInfoFromApi(platform, access_token, {
+      page_id,
+      company_name: user?.name
+    });
+
+    return res.json({ success: true, account: info });
+  } catch (err) {
+    console.error('Fetch account info error:', err.message);
+    return res.status(400).json({ error: err.message || 'تعذر سحب بيانات الحساب من الـ API' });
+  }
+});
+
+/**
  * POST /api/accounts
  * Connect new social account
  */

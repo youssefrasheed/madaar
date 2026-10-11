@@ -38,15 +38,13 @@ export default function Accounts() {
   const [filter, setFilter] = useState('all'); // 'all' | 'connected' | 'disconnected'
   const [actionId, setActionId] = useState(null);
 
-  // Modal State for Connecting / Editing an Account
+  // Modal State for Connecting / Editing an Account via API
   const [modalOpen, setModalOpen] = useState(false);
   const [modalPlatform, setModalPlatform] = useState(null);
-  const [formData, setFormData] = useState({
-    accountName: '',
-    accountId: '',
-    followers: 0,
-    accessToken: '',
-  });
+  const [apiToken, setApiToken] = useState('');
+  const [pageId, setPageId] = useState('');
+  const [fetchingApi, setFetchingApi] = useState(false);
+  const [fetchedData, setFetchedData] = useState(null);
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -94,43 +92,86 @@ export default function Accounts() {
 
   const openConnectModal = (account) => {
     setModalPlatform(account);
-    setFormData({
-      accountName: account.name,
-      accountId: account.accountId,
-      followers: account.connected ? (account.followers || 0) : 0,
-      accessToken: `token_${account.platform}_live_${Date.now().toString().slice(-6)}`,
-    });
+    setApiToken('');
+    setPageId('');
+    setFetchedData(null);
+    setFetchingApi(false);
     setModalOpen(true);
+  };
+
+  const handleAutoFetch = async (overrideToken = null) => {
+    const tokenToUse = overrideToken !== null ? overrideToken : apiToken;
+    if (!tokenToUse || !tokenToUse.trim()) {
+      toast.error(isRTL ? 'يُرجى إدخال رمز الـ API / Access Token' : 'Please enter API / Access Token');
+      return null;
+    }
+
+    setFetchingApi(true);
+    try {
+      const res = await api.post('/accounts/fetch-info', {
+        platform: modalPlatform.platform,
+        access_token: tokenToUse.trim(),
+        page_id: pageId.trim() || undefined,
+      });
+      if (res.data.success && res.data.account) {
+        setFetchedData(res.data.account);
+        toast.success(
+          isRTL
+            ? `تم سحب بيانات الحساب والتحقق بنجاح من ${PLATFORM_META[modalPlatform.platform]?.name}! ⚡`
+            : 'Account data fetched & verified successfully!'
+        );
+        return res.data.account;
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message;
+      toast.error(msg || (isRTL ? 'تعذر سحب البيانات من الـ API' : 'Failed to fetch from API'));
+      return null;
+    } finally {
+      setFetchingApi(false);
+    }
+  };
+
+  const handleQuickDemoConnect = async () => {
+    const demoToken = `token_${modalPlatform.platform}_verified_${Date.now().toString().slice(-5)}`;
+    setApiToken(demoToken);
+    await handleAutoFetch(demoToken);
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.accountName.trim()) {
-      toast.error(isRTL ? 'يُرجى إدخال اسم الحساب أو الصفحة' : 'Please enter account/page name');
-      return;
+    let accountToSave = fetchedData;
+
+    if (!accountToSave) {
+      if (!apiToken.trim()) {
+        toast.error(isRTL ? 'يُرجى إدخال رمز الـ API وسحب البيانات أولاً' : 'Please enter API Token and fetch data first');
+        return;
+      }
+      accountToSave = await handleAutoFetch();
     }
+
+    if (!accountToSave) return;
 
     setActionId(modalPlatform.platform);
     try {
       await api.post('/accounts', {
         platform: modalPlatform.platform,
-        account_name: formData.accountName.trim(),
-        account_id: formData.accountId.trim() || `${modalPlatform.platform}_id`,
-        access_token: formData.accessToken.trim() || `oauth_token_${modalPlatform.platform}`,
-        profile_pic: modalPlatform.avatar,
-        followers_count: Number(formData.followers) || 0,
+        account_name: accountToSave.account_name,
+        account_id: accountToSave.account_id,
+        access_token: apiToken.trim() || `token_${modalPlatform.platform}_verified`,
+        profile_pic: accountToSave.profile_pic,
+        followers_count: Number(accountToSave.followers_count) || 0,
       });
 
       toast.success(
         isRTL
-          ? `تم ربط حساب ${formData.accountName} بنجاح لحساب الشركة!`
-          : `Connected ${formData.accountName} successfully to company account!`
+          ? `تم ربط حساب «${accountToSave.account_name}» بنجاح لحساب الشركة!`
+          : `Connected «${accountToSave.account_name}» successfully to company account!`
       );
       setModalOpen(false);
       await fetchAccounts();
     } catch (err) {
       console.error('Account connect error:', err);
-      toast.error(isRTL ? 'حدث خطأ أثناء ربط الحساب' : 'Failed to connect account');
+      toast.error(isRTL ? 'حدث خطأ أثناء حفظ الحساب' : 'Failed to save account');
     } finally {
       setActionId(null);
     }
@@ -375,11 +416,13 @@ export default function Accounts() {
                 <div>
                   <h3 className="text-lg font-black text-slate-900">
                     {isRTL
-                      ? `ربط حساب ${PLATFORM_META[modalPlatform.platform]?.name} لشركتك`
-                      : `Connect ${PLATFORM_META[modalPlatform.platform]?.name} to Company`}
+                      ? `ربط ${PLATFORM_META[modalPlatform.platform]?.name} عبر مفتاح الـ API`
+                      : `Connect ${PLATFORM_META[modalPlatform.platform]?.name} via API`}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    {isRTL ? 'أدخل تفاصيل حساب الشركة لتثبيته في قاعدة البيانات' : 'Enter company channel credentials to save into SQLite'}
+                    {isRTL
+                      ? 'أدخل مفتاح الربط (Access Token) فقط، وسيسحب النظام البيانات الحقيقية تلقائياً'
+                      : 'Enter the API Access Token only, and the system will auto-fetch live channel data'}
                   </p>
                 </div>
               </div>
@@ -391,75 +434,133 @@ export default function Accounts() {
               </button>
             </div>
 
-            <form onSubmit={handleModalSubmit} className="space-y-4">
+            <form onSubmit={handleModalSubmit} className="space-y-5">
+              {/* API Token Input & Fetch Button */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {isRTL ? 'اسم الصفحة أو الحساب الرسمي للشركة' : 'Official Page / Account Name'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.accountName}
-                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                  placeholder={isRTL ? 'مثال: شركة الأفق - الصفحة الرسمية' : 'e.g. Horizon Media Official'}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    {isRTL ? 'معرف الحساب أو الرابط (Handle)' : 'Username / Handle'}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.accountId}
-                    onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
-                    placeholder="@company_official"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-left"
-                    dir="ltr"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    {isRTL ? 'عدد المتابعين الحالي' : 'Current Followers'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.followers}
-                    onChange={(e) => setFormData({ ...formData, followers: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-left"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>{isRTL ? 'رمز الوصول / Access Token (مفتاح الربط)' : 'OAuth Access Token'}</span>
+                <label className="block text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>{isRTL ? 'رمز الوصول / Access Token (مفتاح الـ API)' : 'OAuth Access Token / API Key'}</span>
+                  </span>
                   <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                    {isRTL ? 'مشفر ومؤمن' : 'Encrypted'}
+                    {isRTL ? 'سحب تلقائي ⚡' : 'Auto-Fetch ⚡'}
                   </span>
                 </label>
-                <div className="relative">
-                  <Key className={`w-4 h-4 text-slate-400 absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`} />
-                  <input
-                    type="text"
-                    value={formData.accessToken}
-                    onChange={(e) => setFormData({ ...formData, accessToken: e.target.value })}
-                    className={`w-full ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600`}
-                    dir="ltr"
-                  />
+                
+                <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      required
+                      value={apiToken}
+                      onChange={(e) => {
+                        setApiToken(e.target.value);
+                        setFetchedData(null); // Reset preview on edit
+                      }}
+                      placeholder={
+                        modalPlatform.platform === 'facebook'
+                          ? 'EAAB... (Page Access Token)'
+                          : modalPlatform.platform === 'twitter'
+                          ? 'AAAAAAAAAAAAAAAAAAAAA... (Bearer Token)'
+                          : 'الصق رمز الـ Access Token هنا...'
+                      }
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      dir="ltr"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAutoFetch()}
+                    disabled={fetchingApi || !apiToken.trim()}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-md shadow-indigo-600/20 active:scale-95"
+                  >
+                    {fetchingApi ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>{isRTL ? 'جاري السحب...' : 'Fetching...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-amber-300" />
+                        <span>{isRTL ? 'سحب البيانات ⚡' : 'Auto-Fetch ⚡'}</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
+
+                {modalPlatform.platform === 'facebook' && (
+                  <div className="mt-2.5">
+                    <input
+                      type="text"
+                      value={pageId}
+                      onChange={(e) => setPageId(e.target.value)}
+                      placeholder={isRTL ? 'معرف الصفحة / Page ID (اختياري للفيسبوك)' : 'Page ID (optional)'}
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:bg-white focus:outline-none focus:border-indigo-500"
+                      dir="ltr"
+                    />
+                  </div>
+                )}
+
+                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
                   {isRTL
-                    ? 'يتم توليد رمز تصريح آمن تلقائياً، أو يمكنك استخدام الـ Token الحقيقي من Developer Portal.'
-                    : 'A secure OAuth token is generated automatically, or you can paste your production token.'}
+                    ? 'بمجرد إدخال الـ Token، يتصل النظام بالمنصة ويسحب اسم الصفحة الرسمي والصورة وعدد المتابعين تلقائياً.'
+                    : 'System connects to the official platform API and extracts official name, avatar, and followers.'}
                 </p>
               </div>
 
+              {/* Fetched Data Preview Card */}
+              {fetchedData && (
+                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-black text-emerald-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>{isRTL ? 'تم التحقق وسحب البيانات من الـ API بنجاح!' : 'Data verified & fetched via API!'}</span>
+                    </span>
+                    <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full uppercase">
+                      Live Verified
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
+                    <img
+                      src={fetchedData.profile_pic}
+                      alt={fetchedData.account_name}
+                      className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-500/20 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-black text-slate-900 truncate">
+                        {fetchedData.account_name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                        <span className="font-mono text-indigo-600">{fetchedData.account_id}</span>
+                        <span>•</span>
+                        <span className="font-bold text-slate-700">
+                          {Number(fetchedData.followers_count).toLocaleString()} {isRTL ? 'متابع' : 'followers'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Demo Test Action */}
+              {!fetchedData && (
+                <div className="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">
+                    {isRTL ? 'ليس لديك مفتاح API حالياً وتريد التجربة؟' : 'Want to test without a live API key?'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleQuickDemoConnect}
+                    disabled={fetchingApi}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 underline"
+                  >
+                    {isRTL ? '⚡ تجربة سريعة بنقرة واحدة' : '⚡ One-click Demo Test'}
+                  </button>
+                </div>
+              )}
+
+              {/* Modal Footer Actions */}
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -470,7 +571,7 @@ export default function Accounts() {
                 </button>
                 <button
                   type="submit"
-                  disabled={actionId === modalPlatform.platform}
+                  disabled={actionId === modalPlatform.platform || fetchingApi}
                   className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-1.5"
                 >
                   {actionId === modalPlatform.platform ? (
@@ -478,7 +579,11 @@ export default function Accounts() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>{isRTL ? 'تأكيد وحفظ بحساب الشركة' : 'Confirm & Save to Hub'}</span>
+                      <span>
+                        {fetchedData
+                          ? (isRTL ? 'تأكيد وحفظ الحساب المعتمد' : 'Confirm & Save Account')
+                          : (isRTL ? 'سحب وحفظ الحساب' : 'Fetch & Save Account')}
+                      </span>
                     </>
                   )}
                 </button>
