@@ -28,6 +28,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import PlatformIcon from './PlatformIcon';
 import MadaarLogo from './MadaarLogo';
 import ClientSwitcher from './ClientSwitcher';
+import InstallAppButton from './InstallAppButton';
 
 const SIDEBAR_PLATFORMS = ['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube'];
 
@@ -233,6 +234,11 @@ export default function Layout() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Install App CTA in Sidebar */}
+          <div className="pt-4 px-1">
+            <InstallAppButton variant="sidebar" />
           </div>
         </nav>
 

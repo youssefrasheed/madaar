@@ -21,6 +21,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import toast from 'react-hot-toast';
 import MadaarLogo from '../components/MadaarLogo';
 import HologramOrbitAnimation from '../components/HologramOrbitAnimation';
+import InstallAppButton from '../components/InstallAppButton';
 
 export default function Login() {
   const { isRTL, language, toggleLanguage } = useLanguage();
@@ -192,8 +193,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-slate-900 flex relative" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Floating Language Switcher in top corner */}
-      <div className={`absolute top-6 ${isRTL ? 'left-6' : 'right-6'} z-30`}>
+      {/* Floating Controls in top corner */}
+      <div className={`absolute top-6 ${isRTL ? 'left-6' : 'right-6'} z-30 flex items-center gap-2.5`}>
+        <InstallAppButton variant="login" />
         <button
           onClick={toggleLanguage}
           className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 shadow-md backdrop-blur-sm text-xs font-bold transition-all"
