@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVG Logo Tests</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0b1120;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    padding: 50px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+  .preview-card {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+
+  <h1>اختبار شعار مَـدَار بتقنية الفيكتور الكاملة (Full SVG)</h1>
+
+  <div class="preview-card">
+    <div style="font-size: 13px; color: #38bdf8;">نموذج 1: SVG مع محاذاة فيكتور متطابقة</div>
+    
+    <!-- SVG LOGO -->
+    <svg width="220" height="52" viewBox="0 0 220 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Gradients for the Orbital Icon -->
+        <linearGradient id="orbit-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="50%" stop-color="#818cf8" />
+          <stop offset="100%" stop-color="#c084fc" />
+        </linearGradient>
+
+        <linearGradient id="orbit-grad-2" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#06b6d4" />
+          <stop offset="60%" stop-color="#4f46e5" />
+          <stop offset="100%" stop-color="#9333ea" />
+        </linearGradient>
+
+        <radialGradient id="core-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="40%" stop-color="#a5f3fc" />
+          <stop offset="70%" stop-color="#38bdf8" stop-opacity="0.8" />
+          <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+        </radialGradient>
+
+        <filter id="neon-blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
+      <!-- 1. ICON (48x48 rounded squircle at right: x=168, y=2) -->
+      <g transform="translate(168, 2)">
+        <!-- Squircle Base -->
+        <rect width="48" height="48" rx="14" fill="#0f172a" stroke="rgba(255,255,255,0.15)" stroke-width="1.2" />
+        <rect width="48" height="48" rx="14" fill="url(#orbit-grad-2)" opacity="0.08" />
+
+        <!-- Outer Orbital Ellipse Ring (Tilted 3D Orbit) -->
+        <ellipse cx="24" cy="24" rx="17" ry="9" transform="rotate(-30 24 24)" fill="none" stroke="url(#orbit-grad-1)" stroke-width="3" stroke-linecap="round" />
+        
+        <!-- Second Overlapping Orbit for depth -->
+        <path d="M 12 18 C 15 11, 33 11, 36 18 C 39 25, 33 37, 21 34 C 13 32, 10 23, 16 16" 
+              fill="none" stroke="url(#orbit-grad-2)" stroke-width="2.5" stroke-linecap="round" opacity="0.85" />
+
+        <!-- Glowing Central Core Planet -->
+        <circle cx="24" cy="24" r="6.5" fill="url(#core-glow)" filter="url(#neon-blur)" />
+        <circle cx="24" cy="24" r="4" fill="#ffffff" />
+      </g>
+
+      <!-- 2. TYPOGRAPHY LOCKUP (x=0 to x=155) -->
+      <g id="typography">
+        <!-- Line 1: Arabic Name (White) -->
+        <text x="156" y="19" text-anchor="end" fill="#ffffff" font-family="'Cairo', sans-serif" font-weight="900" font-size="19" letter-spacing="0">
+          مَــــــدَار
+        </text>
+
+        <!-- Line 2: English Name (White) -->
+        <text x="156" y="32" text-anchor="end" fill="#ffffff" font-family="'Cairo', sans-serif" font-weight="800" font-size="9.5" letter-spacing="4" text-transform="uppercase">
+          MADAAR
+        </text>
+
+        <!-- Line 3: Slogan (Electric Cyan) -->
+        <text x="156" y="44" text-anchor="end" fill="#38bdf8" font-family="'Cairo', sans-serif" font-weight="700" font-size="9" letter-spacing="0">
+          منصاتك بنفس المدار
+        </text>
+      </g>
+    </svg>
+  </div>
+
+</body>
+</html>

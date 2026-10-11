@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector Icon & Typography Test</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  body {
+    background: #060911;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+  .preview-row {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    background: #0f172a;
+    padding: 30px 40px;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+</style>
+</head>
+<body>
+
+  <h2>مقارنة الأيقونة الفيكتور مع الأصلية</h2>
+
+  <div class="preview-row">
+    <div>
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">الصورة الأصلية (Raster):</div>
+      <img src="/logo.png" style="width: 100px; height: 100px; border-radius: 26px; border: 1px solid rgba(255,255,255,0.15);">
+    </div>
+
+    <div>
+      <div style="font-size: 12px; color: #38bdf8; margin-bottom: 8px;">الفيكتور النقي (Pure SVG Vector):</div>
+      <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Dark background gradient -->
+          <radialGradient id="bg-grad" cx="50%" cy="50%" r="65%">
+            <stop offset="0%" stop-color="#141829" />
+            <stop offset="60%" stop-color="#0c0f1a" />
+            <stop offset="100%" stop-color="#070913" />
+          </radialGradient>
+
+          <!-- Outer Ribbon Gradient (Cyan -> Indigo -> Magenta) -->
+          <linearGradient id="ribbon-outer" x1="15%" y1="10%" x2="85%" y2="90%">
+            <stop offset="0%" stop-color="#38bdf8" />
+            <stop offset="25%" stop-color="#60a5fa" />
+            <stop offset="55%" stop-color="#a855f7" />
+            <stop offset="85%" stop-color="#7c3aed" />
+            <stop offset="100%" stop-color="#4f46e5" />
+          </linearGradient>
+
+          <!-- Inner Occlusion Gradient (Dark Violet to Purple) -->
+          <linearGradient id="ribbon-inner" x1="75%" y1="20%" x2="25%" y2="80%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+            <stop offset="40%" stop-color="#9333ea" />
+            <stop offset="75%" stop-color="#581c87" />
+            <stop offset="100%" stop-color="#3b0764" />
+          </linearGradient>
+
+          <!-- Central Planet Glow -->
+          <radialGradient id="core-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="35%" stop-color="#e0f2fe" />
+            <stop offset="65%" stop-color="#38bdf8" />
+            <stop offset="85%" stop-color="#06b6d4" stop-opacity="0.6" />
+            <stop offset="100%" stop-color="#0891b2" stop-opacity="0" />
+          </radialGradient>
+
+          <radialGradient id="core-aura" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6" />
+            <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.25" />
+            <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+
+        <!-- 1. Background Squircle -->
+        <rect width="100" height="100" rx="26" fill="url(#bg-grad)" stroke="rgba(255,255,255,0.14)" stroke-width="1.2" />
+
+        <!-- 2. Core Aura Ambient Glow -->
+        <circle cx="50" cy="50" r="28" fill="url(#core-aura)" />
+
+        <!-- 3. Outer Orbit Ring (Tilted Oval Loop) -->
+        <!-- Outer Path -->
+        <path d="M 50 14 
+                 C 71 14, 86 29, 86 50 
+                 C 86 71, 71 86, 50 86 
+                 C 29 86, 14 71, 14 50 
+                 C 14 29, 29 14, 50 14 Z" 
+              fill="none" stroke="url(#ribbon-outer)" stroke-width="6.5" stroke-linecap="round" />
+
+        <!-- 4. Inner Orbit Crossing Ribbon (3D Dimension Loop) -->
+        <path d="M 23 37 
+                 C 32 23, 62 25, 76 43 
+                 C 84 54, 82 72, 67 79 
+                 C 52 86, 32 79, 26 66 
+                 C 21 54, 27 41, 35 32"
+              fill="none" stroke="url(#ribbon-inner)" stroke-width="5.5" stroke-linecap="round" />
+
+        <!-- 5. Secondary Highlight Ribbon Edge -->
+        <path d="M 68 25 
+                 C 81 35, 84 56, 75 69 
+                 C 66 82, 48 83, 35 76" 
+              fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" opacity="0.8" />
+
+        <!-- 6. Central Celestial Sphere -->
+        <circle cx="50" cy="50" r="14" fill="url(#core-glow)" />
+        <circle cx="50" cy="50" r="9.5" fill="#e0f2fe" />
+        <circle cx="48.5" cy="48" r="5" fill="#ffffff" />
+      </svg>
+    </div>
+  </div>
+
+</body>
+</html>

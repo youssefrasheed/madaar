@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Measure Exact Text Widths</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f172a;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+  .test-row {
+    background: #1e293b;
+    padding: 20px 30px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .lockup {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-self: flex-start;
+  }
+  .guide-line {
+    position: absolute;
+    top: -10px;
+    bottom: -10px;
+    width: 2px;
+    background: #ef4444;
+  }
+  .guide-line.left { left: 0; }
+  .guide-line.right { right: 0; }
+  .info {
+    font-size: 12px;
+    color: #94a3b8;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+  <h1>اختبار تطابق النهايات والعرض مع السلوجن (Benchmark: Slogan Width)</h1>
+
+  <!-- We will test different tatweel counts (5, 6, 7, 8, 9) -->
+  <div id="results"></div>
+
+<script>
+window.addEventListener('load', () => {
+  const container = document.getElementById('results');
+  
+  // Test configurations
+  const sloganText = 'منصاتك بنفس المدار';
+  const tatweelCounts = [5, 6, 7, 8, 9, 10];
+  
+  tatweelCounts.forEach(tCount => {
+    const kashida = 'ـ'.repeat(tCount);
+    const arabic = `مَ${kashida}دَار`;
+    
+    const row = document.createElement('div');
+    row.className = 'test-row';
+    
+    row.innerHTML = `
+      <div style="font-weight: 600; color: #38bdf8;">تجربة مع ${tCount} كشيدة: ${arabic}</div>
+      <div class="lockup" id="lockup-${tCount}">
+        <div class="arabic-el" style="font-size: 21px; font-weight: 900; line-height: 1; color: white;">${arabic}</div>
+        <div class="english-el" style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-top: 3px; color: white;">
+          <span>M</span><span>A</span><span>D</span><span>A</span><span>A</span><span>R</span>
+        </div>
+        <div class="slogan-el" style="font-size: 9.5px; font-weight: 700; color: #38bdf8; margin-top: 4px; white-space: nowrap;">${sloganText}</div>
+      </div>
+      <div class="info" id="info-${tCount}"></div>
+    `;
+    
+    container.appendChild(row);
+    
+    setTimeout(() => {
+      const lockup = document.getElementById(`lockup-${tCount}`);
+      const arEl = lockup.querySelector('.arabic-el');
+      const enEl = lockup.querySelector('.english-el');
+      const slEl = lockup.querySelector('.slogan-el');
+      
+      const arW = arEl.getBoundingClientRect().width;
+      const slW = slEl.getBoundingClientRect().width;
+      
+      // Set lockup width to slogan width
+      lockup.style.width = slW + 'px';
+      const enW = enEl.getBoundingClientRect().width;
+      
+      const diff = Math.abs(arW - slW);
+      
+      document.getElementById(`info-${tCount}`).innerText = 
+        `عرض السلوجن: ${slW.toFixed(1)}px | عرض العربي: ${arW.toFixed(1)}px | الفارق: ${diff.toFixed(1)}px`;
+    }, 200);
+  });
+});
+</script>
+
+</body>
+</html>

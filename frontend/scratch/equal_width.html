@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Madaar Slogan-Width Alignment Test</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f172a;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+  .card {
+    background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 32px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  .card.light {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    color: #0f172a;
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+  }
+  .lockup {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+  /* Guide lines on left and right to inspect alignment */
+  .guide-lines::before, .guide-lines::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    width: 1px;
+    background: #38bdf8;
+    z-index: 10;
+  }
+  .guide-lines::before { right: 0; }
+  .guide-lines::after { left: 0; }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <div style="font-size: 13px; color: #38bdf8; font-weight: 600;">
+      الشعار بعرض السلوجن تماماً (112px) ونهايات متطابقة وكشيدة معتدلة (Dark Theme)
+    </div>
+
+    <!-- SIZE MD (Standard 112px - Matches Slogan Width) -->
+    <div class="logo-row">
+      <!-- Orbital Icon: 44px x 44px -->
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #0f172a; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 8px 24px rgba(99,102,241,0.25);">
+        <img src="/logo.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+      </div>
+
+      <!-- Typography Lockup: 112px -->
+      <div class="lockup guide-lines" style="width: 112px;">
+        <!-- Line 1: Arabic Name (7 kashidas, balanced, flush ends) -->
+        <div dir="rtl" style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 20px; font-weight: 900; line-height: 1; color: #ffffff;">
+          <span>مَـــــــدَ</span>
+          <span>ا</span>
+          <span>ر</span>
+        </div>
+
+        <!-- Line 2: English Name (Flush ends, matching 112px) -->
+        <div dir="ltr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 9.6px; font-weight: 800; line-height: 1; color: #ffffff; text-transform: uppercase; margin-top: 3px;">
+          <span>M</span><span>A</span><span>D</span><span>A</span><span>A</span><span>R</span>
+        </div>
+
+        <!-- Line 3: Brand Slogan (Flush ends, natural spacing) -->
+        <div dir="rtl" style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 9px; font-weight: 700; line-height: 1; color: #38bdf8; margin-top: 4px; white-space: nowrap;">
+          <span>منصاتك</span>
+          <span>بنفس</span>
+          <span>المدار</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card light">
+    <div style="font-size: 13px; color: #64748b; font-weight: 600;">
+      Light Theme (خلفية بيضاء)
+    </div>
+
+    <div class="logo-row">
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #0f172a; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <img src="/logo.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+      </div>
+
+      <div class="lockup guide-lines" style="width: 112px;">
+        <div dir="rtl" style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 20px; font-weight: 900; line-height: 1; color: #0f172a;">
+          <span>مَـــــــدَ</span>
+          <span>ا</span>
+          <span>ر</span>
+        </div>
+        <div dir="ltr" style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 9.6px; font-weight: 800; line-height: 1; color: #0f172a; text-transform: uppercase; margin-top: 3px;">
+          <span>M</span><span>A</span><span>D</span><span>A</span><span>A</span><span>R</span>
+        </div>
+        <div dir="rtl" style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 9px; font-weight: 700; line-height: 1; color: #4f46e5; margin-top: 4px; white-space: nowrap;">
+          <span>منصاتك</span>
+          <span>بنفس</span>
+          <span>المدار</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

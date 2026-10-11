@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # ─── Backend Service (Express + SQLite + Gemini AI) ─────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: socialhub-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - DB_PATH=/app/data/database.sqlite
+    volumes:
+      - backend-data:/app/data
+      - backend-uploads:/app/uploads
+    networks:
+      - socialhub-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ─── Frontend Service (React + Vite + Nginx Proxy) ──────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: socialhub-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - socialhub-net
+
+volumes:
+  backend-data:
+    driver: local
+  backend-uploads:
+    driver: local
+
+networks:
+  socialhub-net:
+    driver: bridge
