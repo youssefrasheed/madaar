@@ -222,6 +222,40 @@ export function AuthProvider({ children }) {
     }
   };
 
+  /**
+   * Request password reset code via email
+   */
+  const forgotPassword = async (email) => {
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      toast.success(res.data.message || 'تم إرسال كود استعادة كلمة المرور إلى بريدك 📩');
+      return {
+        success: true,
+        resetToken: res.data.resetToken,
+        maskedEmail: res.data.maskedEmail,
+      };
+    } catch (err) {
+      const message = err.response?.data?.error || 'تعذر إرسال كود الاستعادة، تحقق من البريد';
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
+  /**
+   * Confirm password reset with code and new password
+   */
+  const resetPassword = async (resetToken, code, newPassword) => {
+    try {
+      const res = await api.post('/auth/reset-password', { resetToken, code, newPassword });
+      toast.success(res.data.message || 'تم تحديث كلمة المرور بنجاح! 🔑');
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.error || 'فشل تحديث كلمة المرور';
+      toast.error(message);
+      return { success: false, error: message };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -244,6 +278,8 @@ export function AuthProvider({ children }) {
     switchAccount,
     createClientAccount,
     logout,
+    forgotPassword,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

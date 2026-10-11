@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const { JWT_SECRET, authenticateToken } = require('../middleware/auth');
 
-const { send2FACode } = require('../services/emailService');
+const { send2FACode, sendPasswordResetCode } = require('../services/emailService');
 
 function maskEmail(email) {
   const [name, domain] = email.split('@');
@@ -500,6 +500,110 @@ router.post('/create-client', authenticateToken, (req, res) => {
   } catch (err) {
     console.error('Create client error:', err);
     return res.status(500).json({ error: 'Server error', message: 'Failed to create client account' });
+  }
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * Initiates password reset by sending a 6-digit OTP code to the registered email
+ */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'البريد الإلكتروني مطلوب' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = db.prepare('SELECT id, email, name FROM users WHERE email = ?').get(normalizedEmail);
+    if (!user) {
+      return res.status(404).json({ error: 'لم يتم العثور على حساب مسجل بهذا البريد الإلكتروني' });
+    }
+
+    // Invalidate old password reset codes
+    try {
+      db.prepare(`DELETE FROM verification_codes WHERE user_id = ? AND purpose = 'password_reset'`).run(user.id);
+    } catch (e) {}
+
+    // Generate 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins
+
+    db.prepare(`
+      INSERT INTO verification_codes (user_id, code, purpose, attempts, expires_at)
+      VALUES (?, ?, 'password_reset', 0, ?)
+    `).run(user.id, otpCode, expiresAt);
+
+    await sendPasswordResetCode(user.email, otpCode, user.name);
+
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, type: 'reset_pending' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    return res.json({
+      success: true,
+      resetToken,
+      maskedEmail: maskEmail(user.email),
+      message: 'تم إرسال كود استعادة كلمة المرور إلى بريدك الإلكتروني'
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    return res.status(500).json({ error: 'حدث خطأ أثناء معالجة طلب استعادة كلمة المرور' });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Verifies the 6-digit reset OTP and updates user's password
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { resetToken, code, newPassword } = req.body;
+
+    if (!resetToken || !code || !newPassword) {
+      return res.status(400).json({ error: 'جميع الحقول مطلوبة (الرمز، كلمة المرور الجديدة)' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'كلمة المرور يجب ألا تقل عن 6 خانات' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, JWT_SECRET);
+      if (decoded.type !== 'reset_pending') throw new Error('Invalid token');
+    } catch {
+      return res.status(401).json({ error: 'انتهت صلاحية جلسة الاستعادة، يُرجى المحاولة من جديد' });
+    }
+
+    const record = db.prepare(`
+      SELECT * FROM verification_codes 
+      WHERE user_id = ? AND purpose = 'password_reset' AND expires_at > datetime('now')
+      ORDER BY id DESC LIMIT 1
+    `).get(decoded.id);
+
+    if (!record || record.code !== code.trim()) {
+      return res.status(400).json({ error: 'رمز الأمان غير صحيح أو انتهت صلاحيته' });
+    }
+
+    // Hash new password
+    const newHash = bcrypt.hashSync(newPassword, 10);
+
+    // Update user in DB
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, decoded.id);
+
+    // Clean up used code
+    db.prepare(`DELETE FROM verification_codes WHERE user_id = ? AND purpose = 'password_reset'`).run(decoded.id);
+
+    return res.json({
+      success: true,
+      message: 'تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة'
+    });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return res.status(500).json({ error: 'فشل في تحديث كلمة المرور' });
   }
 });
 

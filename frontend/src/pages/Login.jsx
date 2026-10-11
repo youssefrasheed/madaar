@@ -43,8 +43,64 @@ export default function Login() {
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
 
-  const { requestLogin, registerCompany, verifyOtp, resendOtp } = useAuth();
+  // Forgot / Reset Password state
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  const { requestLogin, registerCompany, verifyOtp, resendOtp, forgotPassword, resetPassword } = useAuth();
   const navigate = useNavigate();
+
+  // Step: Forgot Password - Request Code via Email
+  const handleForgotEmailSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      toast.error(isRTL ? 'يُرجى إدخال البريد الإلكتروني' : 'Please enter your email');
+      return;
+    }
+    setLoading(true);
+    const res = await forgotPassword(resetEmail.trim());
+    setLoading(false);
+    if (res.success) {
+      setResetToken(res.resetToken);
+      setMaskedEmail(res.maskedEmail || resetEmail);
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setStep('forgot_otp');
+    }
+  };
+
+  // Step: Reset Password - Confirm Code & Set New Password
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetOtp || resetOtp.trim().length < 6) {
+      toast.error(isRTL ? 'يُرجى إدخال رمز الأمان المكون من 6 أرقام' : 'Please enter the 6-digit security code');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error(isRTL ? 'كلمة المرور يجب ألا تقل عن 6 خانات' : 'Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error(isRTL ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    const res = await resetPassword(resetToken, resetOtp.trim(), newPassword);
+    setLoading(false);
+    if (res.success) {
+      setPassword(newPassword);
+      setEmail(resetEmail);
+      setStep('credentials');
+      setMode('login');
+    }
+  };
 
   // Countdown timer for resend code
   useEffect(() => {
@@ -304,6 +360,18 @@ export default function Login() {
                         )}
                       </button>
                     </div>
+                    <div className="flex justify-end pt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResetEmail(email);
+                          setStep('forgot_email');
+                        }}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline transition-all"
+                      >
+                        {isRTL ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
+                      </button>
+                    </div>
                   </div>
 
                   <button
@@ -542,6 +610,191 @@ export default function Login() {
                       ? (isRTL ? `إعادة الإرسال بعد (${countdown}ث)` : `Resend in (${countdown}s)`)
                       : (isRTL ? 'إعادة إرسال الرمز' : 'Resend Code')}
                   </span>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* STEP 3: FORGOT PASSWORD - ENTER EMAIL */}
+          {step === 'forgot_email' && (
+            <>
+              <div className="text-center mb-6">
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 shadow-sm">
+                  <KeyRound className="w-7 h-7 text-indigo-600" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                  {isRTL ? 'استعادة كلمة المرور' : 'Reset Password'}
+                </h2>
+                <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                  {isRTL
+                    ? 'أدخل بريدك الإلكتروني المسجل، وسنرسل لك رمز أمان مكون من 6 أرقام لإعادة تعيين كلمة المرور عبر الإيميل.'
+                    : 'Enter your registered email address and we will send you a 6-digit verification code.'}
+                </p>
+              </div>
+
+              <form onSubmit={handleForgotEmailSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                    {isRTL ? 'البريد الإلكتروني المسجل' : 'Registered Email Address'}
+                  </label>
+                  <div className="relative">
+                    <Mail className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2`} />
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      className={`w-full ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50 mt-2"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>{isRTL ? 'إرسال رمز الاستعادة إلى البريد' : 'Send Recovery Code to Email'}</span>
+                      <ArrowRight className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+                <button
+                  type="button"
+                  onClick={() => setStep('credentials')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  <ArrowLeft className={`w-3.5 h-3.5 ${isRTL ? 'rotate-180' : ''}`} />
+                  <span>{isRTL ? 'الرجوع لتسجيل الدخول' : 'Back to Sign In'}</span>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* STEP 4: FORGOT PASSWORD - ENTER OTP & NEW PASSWORD */}
+          {step === 'forgot_otp' && (
+            <>
+              <div className="text-center mb-6">
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 shadow-sm animate-pulse">
+                  <ShieldCheck className="w-7 h-7 text-indigo-600" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                  {isRTL ? 'تعيين كلمة المرور الجديدة' : 'Set New Password'}
+                </h2>
+                <p className="mt-2 text-xs text-slate-500">
+                  {isRTL ? 'تم إرسال رمز أمان مكون من 6 أرقام إلى بريدك:' : 'A 6-digit recovery code was sent to:'}
+                </p>
+                <div className="inline-block mt-1 font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-xs" dir="ltr">
+                  {maskedEmail}
+                </div>
+              </div>
+
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2 text-center">
+                    {isRTL ? 'رمز الأمان (6 أرقام من الإيميل)' : 'Security Code (6 digits from email)'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    autoFocus
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="000000"
+                    className="w-full py-3 text-center text-2xl font-mono font-bold tracking-[10px] bg-slate-50 border border-slate-200 focus:border-indigo-600 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                    {isRTL ? 'كلمة المرور الجديدة' : 'New Password'}
+                  </label>
+                  <div className="relative">
+                    <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
+                      dir="ltr"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1`}
+                      tabIndex={-1}
+                      aria-label="Toggle password"
+                    >
+                      {showNewPassword ? <EyeOff className="w-5 h-5 text-indigo-600" /> : <Eye className="w-5 h-5 text-slate-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                    {isRTL ? 'تأكيد كلمة المرور الجديدة' : 'Confirm New Password'}
+                  </label>
+                  <div className="relative">
+                    <Lock className={`w-5 h-5 text-slate-400 absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
+                    <input
+                      type={showConfirmNewPassword ? 'text' : 'password'}
+                      required
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`w-full ${isRTL ? 'pr-11 pl-11' : 'pl-11 pr-11'} py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-left`}
+                      dir="ltr"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                      className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1`}
+                      tabIndex={-1}
+                      aria-label="Toggle confirm password"
+                    >
+                      {showConfirmNewPassword ? <EyeOff className="w-5 h-5 text-indigo-600" /> : <Eye className="w-5 h-5 text-slate-400" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || resetOtp.length < 6}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/25 transition-all disabled:opacity-50 mt-2"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>{isRTL ? 'حفظ كلمة المرور الجديدة' : 'Save New Password'}</span>
+                      <CheckCircle2 className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+                <button
+                  type="button"
+                  onClick={() => setStep('credentials')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  <ArrowLeft className={`w-3.5 h-3.5 ${isRTL ? 'rotate-180' : ''}`} />
+                  <span>{isRTL ? 'إلغاء والعودة لتسجيل الدخول' : 'Cancel & Back to Sign In'}</span>
                 </button>
               </div>
             </>
