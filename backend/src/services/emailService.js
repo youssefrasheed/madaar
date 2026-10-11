@@ -15,8 +15,8 @@ async function sendViaResend(toEmail, subject, html) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
 
-  const from = process.env.RESEND_FROM_EMAIL || 'مَـدَار | Madaar Security <noreply@mzsteel.net>';
-  const replyTo = process.env.RESEND_REPLY_TO || 'no-reply@madaar.io';
+  const from = process.env.RESEND_FROM_EMAIL || 'مَـدَار | Madaar Security <noreply@jooart.uk>';
+  const replyTo = process.env.RESEND_REPLY_TO || 'no-reply@jooart.uk';
 
   try {
     const res = await axios.post(
