@@ -29,3 +29,58 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Hologram Orbital Keyframes */
+@keyframes madaar-spin-cw {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes madaar-spin-ccw {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(-360deg); }
+}
+
+@keyframes madaar-counter-cw {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes madaar-counter-ccw {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes madaar-pulse-glow {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.08); }
+}
+
+.animate-madaar-orbit-1 {
+  animation: madaar-spin-cw 34s linear infinite;
+}
+
+.animate-madaar-orbit-2 {
+  animation: madaar-spin-ccw 52s linear infinite;
+}
+
+.animate-madaar-orbit-3 {
+  animation: madaar-spin-cw 75s linear infinite;
+}
+
+.animate-madaar-counter-1 {
+  animation: madaar-counter-cw 34s linear infinite;
+}
+
+.animate-madaar-counter-2 {
+  animation: madaar-counter-ccw 52s linear infinite;
+}
+
+.animate-madaar-counter-3 {
+  animation: madaar-counter-cw 75s linear infinite;
+}
+
+.animate-madaar-pulse {
+  animation: madaar-pulse-glow 5s ease-in-out infinite;
+}
+

@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import toast from 'react-hot-toast';
 import MadaarLogo from '../components/MadaarLogo';
+import HologramOrbitAnimation from '../components/HologramOrbitAnimation';
 
 export default function Login() {
   const { isRTL, language, toggleLanguage } = useLanguage();
@@ -144,6 +145,9 @@ export default function Login() {
 
       {/* Visual Branding Panel */}
       <div className={`hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-16 flex-col justify-between overflow-hidden ${isRTL ? 'border-l border-slate-800 order-1' : 'border-r border-slate-800 order-1'}`}>
+        {/* Hologram Orbital Animation for Social Media Platforms */}
+        <HologramOrbitAnimation />
+
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
