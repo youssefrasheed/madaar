@@ -1262,7 +1262,7 @@ router.get('/twitter/callback', async (req, res) => {
       <head><meta charset="utf-8"><title>خطأ في التفويض</title></head>
       <body style="font-family: sans-serif; text-align: center; padding: 40px; background: #0f172a; color: white;">
         <h3 style="color: #f43f5e;">حدث خطأ أثناء الاتصال بسيرفر X (Twitter)</h3>
-        <p style="color: #94a3b8;">\${msg}</p>
+        <p style="color: #94a3b8;">${msg}</p>
         <button onclick="window.close()" style="margin-top: 20px; padding: 10px 24px; border-radius: 12px; background: #334155; color: white; border: none; cursor: pointer;">إغلاق</button>
       </body>
       </html>
