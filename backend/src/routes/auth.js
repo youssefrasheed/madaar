@@ -998,7 +998,7 @@ router.get('/twitter', (req, res) => {
   }
 
   const scope = ['tweet.read', 'tweet.write', 'users.read', 'offline.access'].join(' ');
-  const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=s256`;
+  const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
   return res.redirect(authUrl);
 });
@@ -1033,7 +1033,7 @@ router.get('/twitter/login-url', (req, res) => {
   twitterPkceStore.set(state, { userId, codeVerifier, timestamp: Date.now() });
 
   const scope = ['tweet.read', 'tweet.write', 'users.read', 'offline.access'].join(' ');
-  const url = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=s256`;
+  const url = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
   return res.json({ success: true, url });
 });
