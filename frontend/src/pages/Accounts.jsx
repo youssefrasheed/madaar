@@ -62,6 +62,28 @@ export default function Accounts() {
   };
 
   useEffect(() => {
+    // Check if returning from full-page OAuth redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const connectedPlatform = urlParams.get('connected');
+    const errorParam = urlParams.get('error');
+
+    if (connectedPlatform) {
+      const platformName = PLATFORM_META[connectedPlatform]?.name || connectedPlatform;
+      toast.success(
+        isRTL
+          ? `تم تفويض وربط حساب ${platformName} بنجاح! 🎉`
+          : `Connected ${platformName} successfully! 🎉`
+      );
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (errorParam) {
+      toast.error(
+        isRTL
+          ? `تعذر إتمام الربط: ${errorParam}`
+          : `Connection failed: ${errorParam}`
+      );
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     fetchAccounts();
 
     // Listen for OAuth completion from popup window
@@ -135,19 +157,9 @@ export default function Accounts() {
       : `/oauth/authorize?platform=${platformKey}`;
 
     if (isRealOAuth) {
-      try {
-        const popup = window.open(
-          targetUrl,
-          `oauth_${platformKey}`,
-          `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=no,scrollbars=yes`
-        );
-        // If popup blocker intervened or mobile view, navigate directly to official OAuth!
-        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-          window.location.href = targetUrl;
-        }
-      } catch (err) {
-        window.location.href = targetUrl;
-      }
+      // Direct full-page redirect guarantees 100% compatibility across all browsers (Firefox, Safari, Chrome, Edge, Mobile)
+      // and eliminates popup blockers, cookie partitioning, and anti-fingerprinting script crashes.
+      window.location.href = targetUrl;
       return;
     }
 

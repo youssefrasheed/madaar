@@ -868,7 +868,7 @@ router.get('/facebook/callback', async (req, res) => {
             window.opener.postMessage({ type: 'MADAAR_OAUTH_SUCCESS', platform: 'facebook' }, '*');
             setTimeout(function() { window.close(); }, 1200);
           } else {
-            setTimeout(function() { window.location.href = 'https://madaar.jooart.uk/accounts'; }, 1500);
+            setTimeout(function() { window.location.href = 'https://madaar.jooart.uk/accounts?connected=facebook'; }, 1000);
           }
         </script>
       </body>
@@ -1247,7 +1247,7 @@ router.get('/twitter/callback', async (req, res) => {
             window.opener.postMessage({ type: 'MADAAR_OAUTH_SUCCESS', platform: 'twitter' }, '*');
             setTimeout(function() { window.close(); }, 1200);
           } else {
-            setTimeout(function() { window.location.href = 'https://madaar.jooart.uk/accounts'; }, 1500);
+            setTimeout(function() { window.location.href = 'https://madaar.jooart.uk/accounts?connected=twitter'; }, 1000);
           }
         </script>
       </body>
