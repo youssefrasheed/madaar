@@ -128,7 +128,7 @@ export default function Accounts() {
     const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
 
     // If platform is facebook or twitter, route directly to real official OAuth endpoint!
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('socialhub_token') || localStorage.getItem('token') || '';
     const isRealOAuth = (platformKey === 'facebook' || platformKey === 'twitter');
     const targetUrl = isRealOAuth
       ? `https://api.jooart.uk/api/auth/${platformKey}?token=${token}`

@@ -490,7 +490,7 @@ export default function OAuthConsent({ embeddedPlatform = null, onEmbeddedSucces
                   <button
                     type="button"
                     onClick={() => {
-                      const token = localStorage.getItem('token') || '';
+                      const token = localStorage.getItem('socialhub_token') || localStorage.getItem('token') || '';
                       window.location.href = `https://api.jooart.uk/api/auth/${platformParam}?token=${token}`;
                     }}
                     className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-2 ${
