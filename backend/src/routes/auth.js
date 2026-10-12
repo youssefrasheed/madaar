@@ -1270,6 +1270,316 @@ router.get('/twitter/callback', async (req, res) => {
   }
 });
 
+// LinkedIn state store for CSRF prevention & user tracking
+const linkedinStateStore = new Map();
+
+/**
+ * GET /api/auth/linkedin
+ * Initiates official LinkedIn OAuth 2.0 flow
+ */
+router.get('/linkedin', (req, res) => {
+  const token = req.query.token || req.headers.authorization?.replace('Bearer ', '');
+  let userId = 2;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      userId = decoded.id;
+    } catch (e) {}
+  }
+
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'https://api.jooart.uk/api/auth/linkedin/callback';
+
+  if (!clientId || clientId === 'mock_linkedin_client_id' || clientId.trim() === '') {
+    return res.send(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>إعداد تفويض LinkedIn - مَـدَار</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { background: #0b1120; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+          .card { background: #1e293b; border: 1px solid #334155; border-radius: 24px; padding: 32px; max-width: 500px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+          .icon { width: 56px; height: 56px; border-radius: 16px; background: rgba(10, 102, 194, 0.2); border: 1px solid rgba(10, 102, 194, 0.4); color: #0a66c2; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; font-weight: bold; }
+          h2 { margin: 0 0 8px; font-size: 18px; text-align: center; font-weight: 800; }
+          p { color: #94a3b8; font-size: 13px; text-align: center; margin: 0 0 24px; line-height: 1.5; }
+          .form-group { margin-bottom: 16px; text-align: right; }
+          label { display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+          input { width: 100%; box-sizing: border-box; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 12px 14px; color: white; font-size: 13px; font-family: monospace; outline: none; }
+          input:focus { border-color: #0a66c2; }
+          .btn { width: 100%; background: #0a66c2; color: white; border: none; border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+          .btn:hover { background: #084e96; }
+          .info { background: #0f172a; border-radius: 12px; padding: 12px; font-size: 11px; color: #64748b; margin-top: 16px; line-height: 1.6; text-align: right; }
+          .info code { color: #38bdf8; background: #1e293b; padding: 2px 6px; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon">in</div>
+          <h2>ربط تطبيق LinkedIn الرسمي</h2>
+          <p>أدخل Client ID و Client Secret من بوابة مطوري LinkedIn للمتابعة</p>
+          <form method="POST" action="/api/auth/linkedin/configure">
+            <input type="hidden" name="token" value="${encodeURIComponent(token || '')}">
+            <div class="form-group">
+              <label>Client ID:</label>
+              <input type="text" name="clientId" placeholder="مثال: 78xyz..." required>
+            </div>
+            <div class="form-group">
+              <label>Client Secret:</label>
+              <input type="text" name="clientSecret" placeholder="مثال: WXYZ_abc..." required>
+            </div>
+            <button type="submit" class="btn">حفظ ومتابعة التفويض الرسمي ←</button>
+          </form>
+          <div class="info">
+            • تأكد من إضافة هذا الرابط في <strong>Authorized redirect URLs for your app</strong>:<br>
+            <code>${redirectUri}</code>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  const stateObj = { userId, t: Date.now() };
+  const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
+  linkedinStateStore.set(state, { userId, timestamp: Date.now() });
+
+  const expiry = Date.now() - 30 * 60 * 1000;
+  for (const [k, v] of linkedinStateStore.entries()) {
+    if (v.timestamp < expiry) linkedinStateStore.delete(k);
+  }
+
+  // OpenID Connect scopes for LinkedIn
+  const scope = ['openid', 'profile', 'email', 'w_member_social'].join(' ');
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
+
+  return res.redirect(authUrl);
+});
+
+/**
+ * GET /api/auth/linkedin/login-url
+ */
+router.get('/linkedin/login-url', (req, res) => {
+  const token = req.query.token || req.headers.authorization?.replace('Bearer ', '');
+  let userId = 2;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      userId = decoded.id;
+    } catch (e) {}
+  }
+
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'https://api.jooart.uk/api/auth/linkedin/callback';
+
+  if (!clientId || clientId === 'mock_linkedin_client_id' || clientId.trim() === '') {
+    return res.json({ success: false, needConfig: true, configureUrl: `/api/auth/linkedin?token=${encodeURIComponent(token || '')}` });
+  }
+
+  const stateObj = { userId, t: Date.now() };
+  const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
+  linkedinStateStore.set(state, { userId, timestamp: Date.now() });
+
+  const scope = ['openid', 'profile', 'email', 'w_member_social'].join(' ');
+  const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
+
+  return res.json({ success: true, url });
+});
+
+/**
+ * POST /api/auth/linkedin/configure
+ */
+router.post('/linkedin/configure', (req, res) => {
+  const { clientId, clientSecret, token } = req.body;
+  if (!clientId || !clientId.trim()) {
+    return res.status(400).send('Client ID مطلوب');
+  }
+
+  process.env.LINKEDIN_CLIENT_ID = clientId.trim();
+  if (clientSecret && clientSecret.trim()) {
+    process.env.LINKEDIN_CLIENT_SECRET = clientSecret.trim();
+  }
+
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const envPaths = [
+      path.resolve(__dirname, '../../.env'),
+      '/var/www/social-media-hub/backend/.env'
+    ];
+
+    for (const p of envPaths) {
+      if (fs.existsSync(p)) {
+        let content = fs.readFileSync(p, 'utf8');
+        if (content.includes('LINKEDIN_CLIENT_ID=')) {
+          content = content.replace(/LINKEDIN_CLIENT_ID=.*/g, `LINKEDIN_CLIENT_ID=${clientId.trim()}`);
+        } else {
+          content += `\nLINKEDIN_CLIENT_ID=${clientId.trim()}`;
+        }
+        if (clientSecret && clientSecret.trim()) {
+          if (content.includes('LINKEDIN_CLIENT_SECRET=')) {
+            content = content.replace(/LINKEDIN_CLIENT_SECRET=.*/g, `LINKEDIN_CLIENT_SECRET=${clientSecret.trim()}`);
+          } else {
+            content += `\nLINKEDIN_CLIENT_SECRET=${clientSecret.trim()}`;
+          }
+        }
+        fs.writeFileSync(p, content, 'utf8');
+      }
+    }
+  } catch (envErr) {
+    console.warn('Could not update .env file for LinkedIn:', envErr.message);
+  }
+
+  return res.redirect(`/api/auth/linkedin?token=${encodeURIComponent(token || '')}`);
+});
+
+/**
+ * GET /api/auth/linkedin/callback
+ * Official LinkedIn OAuth 2.0 Callback
+ */
+router.get('/linkedin/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+
+  if (error) {
+    console.error('LinkedIn OAuth Error:', error, error_description);
+    return res.send(`
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head><meta charset="utf-8"><title>خطأ في التفويض</title></head>
+      <body style="font-family: sans-serif; text-align: center; padding: 40px; background: #0f172a; color: white;">
+        <h3 style="color: #f43f5e;">تعذر إتمام التفويض من منصة LinkedIn</h3>
+        <p style="color: #94a3b8;">${error_description || error}</p>
+        <button onclick="window.close()" style="margin-top: 20px; padding: 10px 24px; border-radius: 12px; background: #334155; color: white; border: none; cursor: pointer;">إغلاق النافذة</button>
+      </body>
+      </html>
+    `);
+  }
+
+  if (!code) {
+    return res.status(400).send('كود التفويض مفقود من منصة LinkedIn');
+  }
+
+  let userId = 2;
+  if (state && linkedinStateStore.has(state)) {
+    const cached = linkedinStateStore.get(state);
+    userId = cached.userId || 2;
+    linkedinStateStore.delete(state);
+  } else if (state) {
+    try {
+      const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+      if (decoded.userId) userId = decoded.userId;
+    } catch (e) {}
+  }
+
+  try {
+    const clientId = process.env.LINKEDIN_CLIENT_ID;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'https://api.jooart.uk/api/auth/linkedin/callback';
+
+    const tokenRes = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: clientId,
+      client_secret: clientSecret
+    }).toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 15000
+    });
+
+    const { access_token, expires_in, refresh_token } = tokenRes.data;
+
+    // Fetch user profile from LinkedIn OpenID UserInfo endpoint
+    let accountName = 'LinkedIn Account';
+    let accountId = '@linkedin_user';
+    let profilePic = null;
+
+    try {
+      const userRes = await axios.get('https://api.linkedin.com/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${access_token}` },
+        timeout: 10000
+      });
+      const info = userRes.data;
+      if (info.name) accountName = info.name;
+      if (info.email) accountId = `@${info.email.split('@')[0]}`;
+      if (info.picture) profilePic = info.picture;
+    } catch (uErr) {
+      console.warn('LinkedIn UserInfo error, fallback to default:', uErr.message);
+    }
+
+    const followersCount = 0;
+    const expiresAt = new Date(Date.now() + (expires_in || 5184000) * 1000).toISOString();
+
+    // Upsert into social_accounts table
+    const existing = db.prepare('SELECT id FROM social_accounts WHERE user_id = ? AND platform = ?').get(userId, 'linkedin');
+    if (existing) {
+      db.prepare(`
+        UPDATE social_accounts
+        SET account_name = ?, account_id = ?, access_token = ?, refresh_token = ?, token_expires_at = ?, profile_pic = ?, followers_count = ?, connected_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(accountName, accountId, access_token, refresh_token || null, expiresAt, profilePic, followersCount, existing.id);
+    } else {
+      db.prepare(`
+        INSERT INTO social_accounts (user_id, platform, account_name, account_id, access_token, refresh_token, token_expires_at, profile_pic, followers_count)
+        VALUES (?, 'linkedin', ?, ?, ?, ?, ?, ?, ?)
+      `).run(userId, accountName, accountId, access_token, refresh_token || null, expiresAt, profilePic, followersCount);
+    }
+
+    return res.send(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <title>تم التفويض بنجاح - مَـدَار</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { background: #0b1120; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+          .card { background: #1e293b; border: 1px solid #334155; border-radius: 28px; padding: 40px 32px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+          .icon { width: 68px; height: 68px; border-radius: 20px; background: rgba(10, 102, 194, 0.15); border: 1px solid rgba(10, 102, 194, 0.3); color: #0a66c2; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 20px; font-weight: bold; }
+          h2 { margin: 0 0 10px; font-size: 20px; font-weight: 900; }
+          p { color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0; }
+          .badge { display: inline-block; margin-top: 15px; padding: 6px 14px; border-radius: 100px; background: #0f172a; border: 1px solid #334155; color: #38bdf8; font-size: 11px; font-family: monospace; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon">in</div>
+          <h2>تم ربط حساب LinkedIn بنجاح! 🎉</h2>
+          <p>تم استلام مفاتيح التفويض الرسمية وحفظ الحساب <strong>(${accountName})</strong> في منصة مَـدَار. سيتم إغلاق النافذة وتحديث لوحة التحكم تلقائياً...</p>
+          <div class="badge">LinkedIn OAuth 2.0 • Connected</div>
+        </div>
+        <script>
+          try {
+            localStorage.setItem('madaar_oauth_success', JSON.stringify({ platform: 'linkedin', timestamp: Date.now() }));
+          } catch(e) {}
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: 'MADAAR_OAUTH_SUCCESS', platform: 'linkedin' }, '*');
+            setTimeout(function() { window.close(); }, 1200);
+          } else {
+            setTimeout(function() { window.location.href = 'https://madaar.jooart.uk/accounts?connected=linkedin'; }, 1000);
+          }
+        </script>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('LinkedIn OAuth Callback Error:', err.response?.data || err.message);
+    const msg = err.response?.data?.error_description || err.response?.data?.message || err.message;
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head><meta charset="utf-8"><title>خطأ في التفويض</title></head>
+      <body style="font-family: sans-serif; text-align: center; padding: 40px; background: #0f172a; color: white;">
+        <h3 style="color: #f43f5e;">حدث خطأ أثناء الاتصال بسيرفر LinkedIn</h3>
+        <p style="color: #94a3b8;">${msg}</p>
+        <button onclick="window.close()" style="margin-top: 20px; padding: 10px 24px; border-radius: 12px; background: #334155; color: white; border: none; cursor: pointer;">إغلاق</button>
+      </body>
+      </html>
+    `);
+  }
+});
+
 /**
  * GET /api/auth/privacy
  */

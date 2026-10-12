@@ -486,7 +486,7 @@ export default function OAuthConsent({ embeddedPlatform = null, onEmbeddedSucces
                   {isRTL ? 'إلغاء (Cancel)' : 'Cancel'}
                 </button>
 
-                {(platformParam === 'facebook' || platformParam === 'twitter') ? (
+                {(platformParam === 'facebook' || platformParam === 'twitter' || platformParam === 'linkedin') ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -496,14 +496,18 @@ export default function OAuthConsent({ embeddedPlatform = null, onEmbeddedSucces
                     className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-2 ${
                       platformParam === 'facebook'
                         ? 'bg-[#1877F2] hover:bg-[#166fe5] text-white'
-                        : 'bg-black hover:bg-slate-900 text-white'
+                        : platformParam === 'twitter'
+                        ? 'bg-black hover:bg-slate-900 text-white'
+                        : 'bg-[#0A66C2] hover:bg-[#084e96] text-white'
                     }`}
                   >
                     <ExternalLink className="w-4 h-4" />
                     <span>
                       {platformParam === 'facebook'
                         ? (isRTL ? 'المتابعة وتفويض فيسبوك الرسمي (Meta Login)' : 'Continue with Facebook (Meta Login)')
-                        : (isRTL ? 'المتابعة وتفويض منصة X الرسمية (X / Twitter Login)' : 'Continue with X (Twitter OAuth 2.0)')}
+                        : platformParam === 'twitter'
+                        ? (isRTL ? 'المتابعة وتفويض منصة X الرسمية (X / Twitter Login)' : 'Continue with X (Twitter OAuth 2.0)')
+                        : (isRTL ? 'المتابعة وتفويض لينكد إن الرسمي (LinkedIn OAuth 2.0)' : 'Continue with LinkedIn (OAuth 2.0)')}
                     </span>
                   </button>
                 ) : (
